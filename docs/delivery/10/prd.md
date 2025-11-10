@@ -53,7 +53,7 @@ Without a consolidated view, users must bounce between transactions, reports, an
 
 ### Should Have
 - [x] Responsive layout for cards.
-- [ ] Automated tests covering API calculations (pending).
+- [x] Automated tests covering API calculations.
 
 ### Could Have
 - [ ] Trend charts for health score over time.
