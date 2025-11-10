@@ -82,6 +82,22 @@ def init_test_database(db_path):
         );
     """)
     
+    # Create Budgets table
+    cursor.execute("""
+        CREATE TABLE budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            period_type TEXT NOT NULL CHECK(period_type IN ('monthly', 'yearly')),
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            alert_threshold INTEGER DEFAULT 80,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+        );
+    """)
+    
     # Create Transactions table
     cursor.execute("""
         CREATE TABLE transactions (

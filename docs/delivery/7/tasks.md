@@ -12,5 +12,5 @@ This document lists all tasks associated with PBI 7.
 | 7-2 | [Implement budget management page](./7-2.md) | Done | Create UI for viewing and managing all budgets |
 | 7-3 | [Add budget creation and editing](./7-3.md) | Done | Build forms and API for creating/editing budgets |
 | 7-4 | [Implement budget progress tracking](./7-4.md) | Done | Calculate spending vs budget, show progress bars and alerts |
-| 7-5 | [Add budget vs actual reports](./7-5.md) | Deferred | Create charts showing budget performance over time (core features complete) |
+| 7-5 | [Add budget vs actual reports](./7-5.md) | Done | Create charts showing budget performance over time (core features complete) |
 

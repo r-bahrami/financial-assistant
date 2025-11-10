@@ -29,6 +29,26 @@
         </div>
     </div>
     
+    <!-- Budget Charts -->
+    <div class="budget-charts">
+        <div class="chart-card">
+            <h2>Budget vs Actual by Category</h2>
+            <div class="chart-container">
+                <canvas id="category-chart"></canvas>
+                <div id="category-chart-empty" class="chart-empty" style="display: none;">
+                    <p>No budget data available for this period.</p>
+                </div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h2>Budget Performance Trend</h2>
+            <div class="chart-container">
+                <canvas id="trend-chart"></canvas>
+            </div>
+            <small class="chart-caption">Tracking the last 6 months of budget performance.</small>
+        </div>
+    </div>
+    
     <!-- Budgets List -->
     <div id="budgets-container">
         <div id="budgets-loading" class="loading">Loading budgets...</div>
@@ -115,6 +135,62 @@
 .summary-card.alert {
     background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
     border: 2px solid #dc3545;
+}
+
+.budget-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.chart-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.chart-card h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 280px;
+}
+
+.chart-container canvas {
+    width: 100% !important;
+    height: 280px !important;
+}
+
+.chart-empty {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #666;
+    font-size: 0.95rem;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.chart-caption {
+    color: #666;
+    font-size: 0.85rem;
 }
 
 .summary-label {
@@ -307,12 +383,189 @@
 
 <script>
 let currentBudgets = [];
+let categoryChart = null;
+let trendChart = null;
+
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+});
 
 // Format currency
 function formatCurrency(amount) {
-    return '$' + Math.abs(amount).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+    return currencyFormatter.format(amount);
+}
+
+function destroyChart(chartInstance) {
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+}
+
+async function loadBudgetCharts() {
+    const categoryCanvas = document.getElementById('category-chart');
+    const trendCanvas = document.getElementById('trend-chart');
+    if (!categoryCanvas || !trendCanvas) {
+        return;
+    }
+    
+    const categoryEmpty = document.getElementById('category-chart-empty');
+    
+    try {
+        const [categoryResponse, trendResponse] = await Promise.all([
+            fetch('/budgets/api/charts/category'),
+            fetch('/budgets/api/charts/trend')
+        ]);
+        
+        const categoryData = await categoryResponse.json();
+        const trendData = await trendResponse.json();
+        
+        if (!categoryData.success) {
+            throw new Error(categoryData.error || 'Failed to load category chart data');
+        }
+        
+        if (!trendData.success) {
+            throw new Error(trendData.error || 'Failed to load trend chart data');
+        }
+        
+        const hasCategoryData = categoryData.labels && categoryData.labels.length > 0;
+        categoryCanvas.style.display = hasCategoryData ? 'block' : 'none';
+        categoryEmpty.style.display = hasCategoryData ? 'none' : 'flex';
+        
+        if (hasCategoryData) {
+            renderCategoryChart(categoryCanvas, categoryData);
+        } else {
+            destroyChart(categoryChart);
+            categoryChart = null;
+        }
+        
+        renderTrendChart(trendCanvas, trendData);
+    } catch (error) {
+        console.error('Error loading budget charts:', error);
+    }
+}
+
+function renderCategoryChart(canvas, data) {
+    destroyChart(categoryChart);
+    
+    const statusColors = {
+        good: 'rgba(32, 201, 151, 0.8)',
+        warning: 'rgba(255, 193, 7, 0.85)',
+        over: 'rgba(220, 53, 69, 0.85)'
+    };
+    
+    const actualColors = data.statuses.map(
+        status => statusColors[status] || 'rgba(102, 126, 234, 0.8)'
+    );
+    
+    categoryChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Budgeted',
+                    data: data.budgeted,
+                    backgroundColor: 'rgba(102,126,234,0.6)',
+                    borderColor: 'rgba(102,126,234,1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Actual',
+                    data: data.actual,
+                    backgroundColor: actualColors,
+                    borderColor: actualColors,
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${formatCurrency(context.raw)}`,
+                        footer: (tooltipItems) => {
+                            const index = tooltipItems[0].dataIndex;
+                            const variance = data.variance[index];
+                            const symbol = variance >= 0 ? '+' : '';
+                            return `Variance: ${symbol}${formatCurrency(variance)}`;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: (value) => formatCurrency(value)
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function renderTrendChart(canvas, data) {
+    destroyChart(trendChart);
+    
+    trendChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Budgeted',
+                    data: data.budgeted,
+                    borderColor: 'rgba(102,126,234,1)',
+                    backgroundColor: 'rgba(102,126,234,0.15)',
+                    tension: 0.3,
+                    fill: false,
+                    pointRadius: 4
+                },
+                {
+                    label: 'Actual',
+                    data: data.actual,
+                    borderColor: 'rgba(32,201,151,1)',
+                    backgroundColor: 'rgba(32,201,151,0.15)',
+                    tension: 0.3,
+                    fill: false,
+                    pointRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${formatCurrency(context.raw)}`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: (value) => formatCurrency(value)
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
     });
 }
 
@@ -377,6 +630,7 @@ async function loadBudgets() {
         `).join('');
         
         list.style.display = 'block';
+        loadBudgetCharts();
         
     } catch (error) {
         loading.style.display = 'none';
@@ -518,5 +772,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBudgets();
 });
 </script>
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
 {% endblock %}
 
