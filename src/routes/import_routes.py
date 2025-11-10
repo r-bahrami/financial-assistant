@@ -93,7 +93,7 @@ def upload_file():
             txn['account_id'] = account_id
         
         # Validate transactions
-        validator = TransactionValidator(db_path='data/financial_assistant.db')
+        validator = TransactionValidator(current_app.config['DATABASE'])
         validated_results = validator.validate_transactions(transactions)
         
         # Separate valid and invalid transactions

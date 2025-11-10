@@ -60,6 +60,9 @@ def init_test_database(db_path):
             name TEXT NOT NULL,
             type TEXT NOT NULL CHECK(type IN ('checking', 'savings', 'credit')),
             institution TEXT,
+            initial_balance REAL DEFAULT 0,
+            reference_date DATE,
+            current_balance REAL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -96,6 +99,45 @@ def init_test_database(db_path):
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
         );
     """)
+
+    # Create Transaction Notes table
+    cursor.execute("""
+        CREATE TABLE transaction_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transaction_id INTEGER NOT NULL UNIQUE,
+            note TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+        );
+    """)
+
+    # Create Tags table
+    cursor.execute("""
+        CREATE TABLE tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            color TEXT DEFAULT '#667eea',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+    # Create Transaction-Tags junction table
+    cursor.execute("""
+        CREATE TABLE transaction_tags (
+            transaction_id INTEGER NOT NULL,
+            tag_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (transaction_id, tag_id),
+            FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        );
+    """)
+
+    # Useful indexes
+    cursor.execute("CREATE INDEX idx_transactions_account ON transactions(account_id);")
+    cursor.execute("CREATE INDEX idx_transactions_date ON transactions(date);")
+    cursor.execute("CREATE INDEX idx_transaction_tags_transaction ON transaction_tags(transaction_id);")
     
     # Create Categorization Rules table
     cursor.execute("""
