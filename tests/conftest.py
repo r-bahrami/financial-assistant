@@ -98,6 +98,22 @@ def init_test_database(db_path):
         );
     """)
     
+    # Create Savings Goals table
+    cursor.execute("""
+        CREATE TABLE savings_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            target_amount REAL NOT NULL,
+            current_amount REAL DEFAULT 0.0,
+            target_date DATE,
+            category_id INTEGER,
+            status TEXT CHECK(status IN ('active', 'completed', 'cancelled')) DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+        );
+    """)
+    
     # Create Transactions table
     cursor.execute("""
         CREATE TABLE transactions (

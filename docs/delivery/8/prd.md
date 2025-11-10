@@ -1,6 +1,6 @@
 # PBI-8: Savings Goals Foundation
 
-**Status**: Done (Foundation)  
+**Status**: Done  
 **Priority**: Medium  
 **Complexity**: Medium  
 **Owner**: Saeed  
@@ -47,8 +47,8 @@ Current gaps:
 ### Must Have
 - [x] Database migration creates `savings_goals` table with required columns and constraints.
 - [x] Model abstraction exposes CRUD operations for savings goals.
-- [ ] API endpoints for creating/updating goals (deferred).
-- [ ] UI for viewing and editing goals (deferred).
+- [x] API endpoints for creating/updating goals.
+- [x] UI for viewing and editing goals.
 - [ ] Goal progress auto-updates based on transactions (future enhancement).
 
 ### Should Have

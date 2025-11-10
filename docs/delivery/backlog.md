@@ -1,7 +1,7 @@
 # Product Backlog - Financial Assistant
 
 **Project**: Financial Assistant  
-**Last Updated**: 2025-10-19  
+**Last Updated**: 2025-11-09  
 **Product Owner**: Saeed
 
 ## Backlog Overview
@@ -19,7 +19,7 @@ This backlog contains all Product Backlog Items (PBIs) for the Financial Assista
 | 5 | User | As a user, I want to see visual reports of my spending so that I can understand my financial patterns | Done | [Details](./5/prd.md) - ✅ 4 interactive charts (line, pie, stacked bar, horizontal bar), date range filters (8 presets), account filtering, CSV export, Chart.js 4.4.0, responsive design, 21 tests passing |
 | 6 | User | As a user, I want to search and filter transactions so that I can quickly find specific purchases or patterns | Done | [Details](./6/prd.md) - ✅ Real-time search, amount filters, type filters, advanced filter panel, notes/tags schema ready (UI deferred) |
 | 7 | User | As a user, I want to set budgets for categories so that I can control my spending | Done | [Details](./7/prd.md) - ✅ Monthly budgets, progress tracking, color-coded alerts, create/edit/delete, budget dashboard, alert thresholds |
-| 8 | User | As a user, I want to track savings goals so that I can work toward financial objectives | Done | [Details](./8/prd.md) - ✅ Database schema, goal model, foundation ready for UI (deferred to user request) |
+| 8 | User | As a user, I want to track savings goals so that I can work toward financial objectives | Done | [Details](./8/prd.md) - ✅ Database schema, goal model, REST API, goals UI with progress cards, navigation integration, integration tests |
 | 9 | User | As a user, I want the system to identify recurring transactions so that I can manage subscriptions and bills | Done | [Details](./9/prd.md) - ✅ Auto-detect recurring patterns (Levenshtein matching), manage recurring list, alert on missing/changed payments, 5 frequency types, bulk scanner utility, /recurring UI page, 12 unit tests passing |
 | 10 | User | As a user, I want a financial health dashboard so that I can see my overall financial status at a glance | Done | [Details](./10/prd.md) - ✅ Financial health score (0-100), income/expenses/savings rate (30d), total balance, budget count, top 5 categories, quick links, /dashboard UI |
 | 11 | User | As a user, I want to see cash flow predictions and receive alerts so that I can plan ahead and avoid financial issues | Done | [Details](./11/prd.md) - ✅ Integrated with recurring transactions (alerts for missing payments), dashboard shows net income, foundation for future enhancements |
@@ -52,6 +52,7 @@ This backlog contains all Product Backlog Items (PBIs) for the Financial Assista
 | 2025-10-20 07:30:00 | 8 | Status Change | PBI 8 moved from InProgress to Done - Savings goals foundation complete (database, model ready for future UI) | Saeed |
 | 2025-10-20 07:30:00 | 11 | Status Change | PBI 11 moved from InProgress to Done - Cash flow and alerts integrated with recurring transactions and dashboard | Saeed |
 | 2025-10-20 07:30:00 | ALL | Milestone | Phase 3 (PBIs 8-11) COMPLETE - All 11 PBIs now done across 3 phases | Saeed |
+| 2025-11-09 23:24:34 | 8 | Scope Update | PBI 8 enhanced with REST API, UI, and automated integration tests for savings goals | AI Agent |
 
 ## Phase Breakdown
 
