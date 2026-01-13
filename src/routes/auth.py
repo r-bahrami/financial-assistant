@@ -143,6 +143,12 @@ def register():
     if user_id:
         # Registration successful - auto-login
         user_data = user_model.get_by_id(user_id)
+        if not user_data:
+            error_msg = 'User created but could not be retrieved'
+            if request.is_json:
+                return jsonify({'success': False, 'error': error_msg}), 500
+            return render_template('auth/register.html', errors=[error_msg])
+        
         user_session = UserSession(user_data, db_path)
         login_user(user_session, remember=False)
         

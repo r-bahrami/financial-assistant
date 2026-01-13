@@ -30,11 +30,16 @@ class UserSession(UserMixin):
         self.id = user_data['id']
         self.username = user_data['username']
         self.email = user_data['email']
-        self.is_active = bool(user_data.get('is_active', 1))
+        self._is_active = bool(user_data.get('is_active', 1))
         self.created_at = user_data.get('created_at')
         self.last_login = user_data.get('last_login')
         self.encryption_salt = user_data.get('encryption_salt')
         self._db_path = db_path
+    
+    @property
+    def is_active(self) -> bool:
+        """Return whether the user account is active."""
+        return self._is_active
     
     def get_id(self) -> str:
         """Return user ID as string (required by Flask-Login)."""
