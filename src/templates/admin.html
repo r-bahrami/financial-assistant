@@ -36,6 +36,23 @@
         </button>
     </div>
     
+    <!-- User Management -->
+    <div class="users-section">
+        <div class="section-header">
+            <h2>👥 User Management</h2>
+            <button class="btn btn-secondary" onclick="loadUsers()">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+        <div id="users-table-container">
+            <p>Loading users...</p>
+        </div>
+    </div>
+    
     <!-- Danger Zone -->
     <div class="danger-zone">
         <h2>⚠️ Danger Zone</h2>
@@ -109,7 +126,7 @@
     margin-bottom: 30px;
 }
 
-.stats-section {
+.stats-section, .users-section {
     background: white;
     padding: 30px;
     border-radius: 10px;
@@ -117,10 +134,130 @@
     margin-bottom: 30px;
 }
 
-.stats-section h2 {
+.stats-section h2, .users-section h2 {
     margin-top: 0;
     color: #2c3e50;
     margin-bottom: 20px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-header h2 {
+    margin-bottom: 0;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.users-table th,
+.users-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.users-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.users-table tr:hover {
+    background: #f8f9fa;
+}
+
+.user-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.user-status.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.user-status.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.user-role {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.user-role.admin {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.user-role.user {
+    background: #e7f3ff;
+    color: #0a58ca;
+}
+
+.user-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.user-actions button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.user-actions .btn-activate {
+    background: #28a745;
+    color: white;
+}
+
+.user-actions .btn-activate:hover {
+    background: #218838;
+}
+
+.user-actions .btn-deactivate {
+    background: #ffc107;
+    color: #212529;
+}
+
+.user-actions .btn-deactivate:hover {
+    background: #e0a800;
+}
+
+.user-actions .btn-role {
+    background: #17a2b8;
+    color: white;
+}
+
+.user-actions .btn-role:hover {
+    background: #138496;
+}
+
+.user-actions .btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.user-actions .btn-delete:hover {
+    background: #c82333;
 }
 
 .stats-grid {
@@ -326,9 +463,10 @@
 <script>
 let currentResetType = null;
 
-// Load statistics on page load
+// Load statistics and users on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadStats();
+    loadUsers();
 });
 
 async function loadStats() {
@@ -438,6 +576,185 @@ document.getElementById('confirm-modal').addEventListener('click', function(e) {
         closeResetModal();
     }
 });
+
+// User Management Functions
+async function loadUsers() {
+    try {
+        const response = await fetch('/admin/api/users');
+        const data = await response.json();
+        
+        if (data.success) {
+            renderUsersTable(data.users);
+        } else {
+            document.getElementById('users-table-container').innerHTML = 
+                '<p class="error-text">Failed to load users: ' + data.error + '</p>';
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('users-table-container').innerHTML = 
+            '<p class="error-text">Error loading users</p>';
+    }
+}
+
+function renderUsersTable(users) {
+    const container = document.getElementById('users-table-container');
+    
+    if (users.length === 0) {
+        container.innerHTML = '<p>No users found.</p>';
+        return;
+    }
+    
+    const table = `
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map(user => renderUserRow(user)).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = table;
+}
+
+function renderUserRow(user) {
+    const statusClass = user.is_active ? 'active' : 'inactive';
+    const statusText = user.is_active ? 'Active' : 'Inactive';
+    const roleClass = user.role || 'user';
+    const roleText = (user.role || 'user').charAt(0).toUpperCase() + (user.role || 'user').slice(1);
+    const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
+    const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never';
+    
+    const isCurrentUser = user.id === {{ (current_user.id if current_user.is_authenticated else 'null')|safe }};
+    const currentUserText = isCurrentUser ? ' (You)' : '';
+    
+    return `
+        <tr>
+            <td>${user.id}</td>
+            <td>${user.username}${currentUserText}</td>
+            <td>${user.email}</td>
+            <td><span class="user-role ${roleClass}">${roleText}</span></td>
+            <td><span class="user-status ${statusClass}">${statusText}</span></td>
+            <td>${createdDate}</td>
+            <td>${lastLogin}</td>
+            <td>
+                <div class="user-actions">
+                    ${user.is_active 
+                        ? `<button class="btn-deactivate" onclick="deactivateUser(${user.id})" ${isCurrentUser ? 'disabled title="Cannot deactivate yourself"' : ''}>Deactivate</button>`
+                        : `<button class="btn-activate" onclick="activateUser(${user.id})">Activate</button>`
+                    }
+                    <button class="btn-role" onclick="toggleUserRole(${user.id}, '${user.role}')" ${isCurrentUser ? 'disabled title="Cannot change your own role"' : ''}>
+                        ${user.role === 'admin' ? 'Make User' : 'Make Admin'}
+                    </button>
+                    <button class="btn-delete" onclick="deleteUser(${user.id})" ${isCurrentUser ? 'disabled title="Cannot delete yourself"' : ''}>Delete</button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+async function activateUser(userId) {
+    if (!confirm('Activate this user account?')) return;
+    
+    try {
+        const response = await fetch(`/admin/api/users/${userId}/activate`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('User activated successfully');
+            loadUsers();
+        } else {
+            alert('Failed to activate user: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error activating user:', error);
+        alert('Error activating user');
+    }
+}
+
+async function deactivateUser(userId) {
+    if (!confirm('Deactivate this user account? They will not be able to log in.')) return;
+    
+    try {
+        const response = await fetch(`/admin/api/users/${userId}/deactivate`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('User deactivated successfully');
+            loadUsers();
+        } else {
+            alert('Failed to deactivate user: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error deactivating user:', error);
+        alert('Error deactivating user');
+    }
+}
+
+async function toggleUserRole(userId, currentRole) {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    const roleText = newRole === 'admin' ? 'admin' : 'regular user';
+    
+    if (!confirm(`Change this user's role to ${roleText}?`)) return;
+    
+    try {
+        const response = await fetch(`/admin/api/users/${userId}/role`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ role: newRole })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`User role updated to ${roleText}`);
+            loadUsers();
+        } else {
+            alert('Failed to update role: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error updating role:', error);
+        alert('Error updating role');
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('⚠️ WARNING: This will permanently delete this user account and all their data. This action cannot be undone!\n\nAre you absolutely sure?')) return;
+    
+    if (!confirm('Final confirmation: Delete this user account permanently?')) return;
+    
+    try {
+        const response = await fetch(`/admin/api/users/${userId}/delete`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('User deleted successfully');
+            loadUsers();
+        } else {
+            alert('Failed to delete user: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Error deleting user');
+    }
+}
 </script>
 {% endblock %}
 

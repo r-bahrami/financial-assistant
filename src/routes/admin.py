@@ -34,7 +34,7 @@ def admin_required(f):
 @admin_required
 def admin_page():
     """Render the admin management page."""
-    return render_template('admin.html')
+    return render_template('admin.html', current_user_id=current_user.id)
 
 
 @admin_bp.route('/api/reset-database', methods=['POST'])
@@ -169,5 +169,172 @@ def get_stats():
         return jsonify({
             'success': False,
             'error': f'Failed to get stats: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/users', methods=['GET'])
+@admin_required
+def get_users():
+    """Get all users (admin only)."""
+    try:
+        db_path = current_app.config['DATABASE']
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from models.user import User
+        
+        user_model = User(db_path)
+        users = user_model.get_all()
+        
+        return jsonify({
+            'success': True,
+            'users': users
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get users: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/users/<int:user_id>/activate', methods=['POST'])
+@admin_required
+def activate_user(user_id):
+    """Activate a user account."""
+    try:
+        db_path = current_app.config['DATABASE']
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from models.user import User
+        
+        user_model = User(db_path)
+        success = user_model.activate(user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'User activated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'User not found or activation failed'
+            }), 404
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to activate user: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/users/<int:user_id>/deactivate', methods=['POST'])
+@admin_required
+def deactivate_user(user_id):
+    """Deactivate a user account."""
+    try:
+        # Prevent deactivating yourself
+        if user_id == current_user.id:
+            return jsonify({
+                'success': False,
+                'error': 'Cannot deactivate your own account'
+            }), 400
+        
+        db_path = current_app.config['DATABASE']
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from models.user import User
+        
+        user_model = User(db_path)
+        success = user_model.deactivate(user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'User deactivated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'User not found or deactivation failed'
+            }), 404
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to deactivate user: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/users/<int:user_id>/delete', methods=['DELETE'])
+@admin_required
+def delete_user(user_id):
+    """Delete a user account."""
+    try:
+        # Prevent deleting yourself
+        if user_id == current_user.id:
+            return jsonify({
+                'success': False,
+                'error': 'Cannot delete your own account'
+            }), 400
+        
+        db_path = current_app.config['DATABASE']
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from models.user import User
+        
+        user_model = User(db_path)
+        success = user_model.delete(user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'User deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'User not found or deletion failed'
+            }), 404
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to delete user: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/users/<int:user_id>/role', methods=['PUT'])
+@admin_required
+def update_user_role(user_id):
+    """Update a user's role."""
+    try:
+        data = request.get_json()
+        new_role = data.get('role')
+        
+        if new_role not in ['admin', 'user']:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid role. Must be "admin" or "user"'
+            }), 400
+        
+        db_path = current_app.config['DATABASE']
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from models.user import User
+        
+        user_model = User(db_path)
+        success = user_model.update_role(user_id, new_role)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'User role updated to {new_role}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'User not found or update failed'
+            }), 404
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to update role: {str(e)}'
         }), 500
 

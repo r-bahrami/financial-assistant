@@ -303,6 +303,28 @@ class User:
         finally:
             conn.close()
     
+    def get_all(self) -> list:
+        """
+        Get all users (admin function).
+        
+        Returns:
+            List of user dictionaries
+        """
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, username, email, role, is_active, created_at, last_login
+            FROM users
+            ORDER BY id
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
     def count(self) -> int:
         """
         Get total number of users.
@@ -318,6 +340,88 @@ class User:
         conn.close()
         
         return count
+    
+    def deactivate(self, user_id: int) -> bool:
+        """
+        Deactivate a user account.
+        
+        Args:
+            user_id: User ID
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                UPDATE users
+                SET is_active = 0
+                WHERE id = ?
+            """, (user_id,))
+            
+            conn.commit()
+            return cursor.rowcount > 0
+            
+        except sqlite3.Error:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
+    def activate(self, user_id: int) -> bool:
+        """
+        Activate a user account.
+        
+        Args:
+            user_id: User ID
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                UPDATE users
+                SET is_active = 1
+                WHERE id = ?
+            """, (user_id,))
+            
+            conn.commit()
+            return cursor.rowcount > 0
+            
+        except sqlite3.Error:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
+    def delete(self, user_id: int) -> bool:
+        """
+        Delete a user account.
+        
+        Args:
+            user_id: User ID
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+            
+        except sqlite3.Error:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
     
     def authenticate(self, username: str, password: str) -> Optional[Dict[str, Any]]:
         """
