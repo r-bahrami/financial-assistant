@@ -23,6 +23,9 @@ python-Levenshtein>=0.25.0
 # PDF Generation (for report exports)
 reportlab>=4.0.0
 
+# Security
+bcrypt>=4.0.0  # Password hashing
+
 # Future additions (uncomment when needed)
 # alembic==1.13.0  # For database migrations
 # python-dotenv==1.0.0  # For environment variables

@@ -7,6 +7,12 @@ import sqlite3
 from typing import Optional, Dict, Any
 from datetime import datetime
 import secrets
+import sys
+import os
+
+# Add services to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from services.password_service import PasswordService
 
 
 class User:
@@ -272,3 +278,76 @@ class User:
         conn.close()
         
         return count
+    
+    def authenticate(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+        """
+        Authenticate a user by username and password.
+        
+        Args:
+            username: Username
+            password: Plain text password
+        
+        Returns:
+            User dictionary if authentication successful, None otherwise
+        """
+        # Get user by username
+        user = self.get_by_username(username)
+        
+        if not user:
+            return None
+        
+        # Check if user is active
+        if not user.get('is_active', 0):
+            return None
+        
+        # Verify password
+        password_hash = user.get('password_hash')
+        if not password_hash:
+            return None
+        
+        if not PasswordService.verify_password(password, password_hash):
+            return None
+        
+        # Update last login
+        self.update_last_login(user['id'])
+        
+        # Return user (without password hash for security)
+        user_dict = dict(user)
+        # Don't return password_hash in authenticated user
+        user_dict.pop('password_hash', None)
+        return user_dict
+    
+    def create_with_password(self, username: str, email: str, password: str,
+                            encrypted_db_key: Optional[str] = None) -> Tuple[Optional[int], Optional[str]]:
+        """
+        Create a new user with password (handles hashing automatically).
+        
+        Args:
+            username: Unique username
+            email: Unique email address
+            password: Plain text password (will be hashed)
+            encrypted_db_key: Optional encrypted database key for SQLCipher
+        
+        Returns:
+            Tuple of (user_id, error_message)
+            - user_id: User ID if successful, None if failed
+            - error_message: None if successful, error description if failed
+        """
+        # Validate password strength
+        is_valid, error_msg = PasswordService.validate_password_strength(password)
+        if not is_valid:
+            return None, error_msg
+        
+        # Hash password
+        password_hash = PasswordService.hash_password(password)
+        
+        # Generate encryption salt
+        encryption_salt = PasswordService.generate_salt()
+        
+        # Create user
+        user_id = self.create(username, email, password_hash, encryption_salt, encrypted_db_key)
+        
+        if user_id:
+            return user_id, None
+        else:
+            return None, "Username or email already exists"
