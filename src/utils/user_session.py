@@ -31,10 +31,15 @@ class UserSession(UserMixin):
         self.username = user_data['username']
         self.email = user_data['email']
         self._is_active = bool(user_data.get('is_active', 1))
+        self.role = user_data.get('role', 'user')
         self.created_at = user_data.get('created_at')
         self.last_login = user_data.get('last_login')
         self.encryption_salt = user_data.get('encryption_salt')
         self._db_path = db_path
+    
+    def is_admin(self) -> bool:
+        """Check if user is an admin."""
+        return self.role == 'admin'
     
     @property
     def is_active(self) -> bool:

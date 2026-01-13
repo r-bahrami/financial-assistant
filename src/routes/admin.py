@@ -2,21 +2,43 @@
 Admin routes for database management.
 """
 
-from flask import Blueprint, request, jsonify, render_template, current_app
+from flask import Blueprint, request, jsonify, render_template, current_app, abort
+from flask_login import login_required, current_user
 import sqlite3
 import os
+import sys
+
+# Add src to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from utils.user_session import UserSession
 
 # Create blueprint
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
+def admin_required(f):
+    """Decorator to require admin role."""
+    from functools import wraps
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)  # Unauthorized
+        if not hasattr(current_user, 'is_admin') or not current_user.is_admin():
+            abort(403)  # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @admin_bp.route('/')
+@admin_required
 def admin_page():
     """Render the admin management page."""
     return render_template('admin.html')
 
 
 @admin_bp.route('/api/reset-database', methods=['POST'])
+@admin_required
 def reset_database():
     """
     Reset the database by deleting all transactions and accounts.
@@ -110,6 +132,7 @@ def reset_database():
 
 
 @admin_bp.route('/api/stats', methods=['GET'])
+@admin_required
 def get_stats():
     """Get database statistics."""
     try:

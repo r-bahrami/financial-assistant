@@ -28,7 +28,8 @@ class User:
         self.db_path = db_path
     
     def create(self, username: str, email: str, password_hash: str, 
-               encryption_salt: str, encrypted_db_key: Optional[str] = None) -> Optional[int]:
+               encryption_salt: str, encrypted_db_key: Optional[str] = None,
+               role: str = 'user') -> Optional[int]:
         """
         Create a new user.
         
@@ -38,18 +39,24 @@ class User:
             password_hash: Hashed password (from bcrypt/argon2)
             encryption_salt: Salt for encryption key derivation
             encrypted_db_key: Optional encrypted database key for SQLCipher
+            role: User role ('admin' or 'user'), defaults to 'user'
         
         Returns:
             User ID if successful, None if username/email already exists
         """
+        # Check if this is the first user - make them admin
+        user_count = self.count()
+        if user_count == 0:
+            role = 'admin'
+        
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         try:
             cursor.execute("""
-                INSERT INTO users (username, email, password_hash, encryption_salt, encrypted_db_key)
-                VALUES (?, ?, ?, ?, ?)
-            """, (username, email, password_hash, encryption_salt, encrypted_db_key))
+                INSERT INTO users (username, email, password_hash, encryption_salt, encrypted_db_key, role)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (username, email, password_hash, encryption_salt, encrypted_db_key, role))
             
             user_id = cursor.lastrowid
             conn.commit()
@@ -78,7 +85,7 @@ class User:
         
         cursor.execute("""
             SELECT id, username, email, password_hash, encryption_salt, 
-                   encrypted_db_key, is_active, created_at, last_login
+                   encrypted_db_key, is_active, role, created_at, last_login
             FROM users
             WHERE id = ?
         """, (user_id,))
@@ -233,6 +240,39 @@ class User:
         finally:
             conn.close()
     
+    def update_role(self, user_id: int, new_role: str) -> bool:
+        """
+        Update user's role.
+        
+        Args:
+            user_id: User ID
+            new_role: New role ('admin' or 'user')
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        if new_role not in ['admin', 'user']:
+            return False
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                UPDATE users
+                SET role = ?
+                WHERE id = ?
+            """, (new_role, user_id))
+            
+            conn.commit()
+            return cursor.rowcount > 0
+            
+        except sqlite3.Error:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
     def update_password(self, user_id: int, new_password_hash: str) -> bool:
         """
         Update user's password hash.
@@ -318,7 +358,8 @@ class User:
         return user_dict
     
     def create_with_password(self, username: str, email: str, password: str,
-                            encrypted_db_key: Optional[str] = None) -> Tuple[Optional[int], Optional[str]]:
+                            encrypted_db_key: Optional[str] = None,
+                            role: Optional[str] = None) -> Tuple[Optional[int], Optional[str]]:
         """
         Create a new user with password (handles hashing automatically).
         
@@ -344,8 +385,12 @@ class User:
         # Generate encryption salt
         encryption_salt = PasswordService.generate_salt()
         
+        # Determine role (first user becomes admin automatically)
+        if role is None:
+            role = 'admin' if self.count() == 0 else 'user'
+        
         # Create user
-        user_id = self.create(username, email, password_hash, encryption_salt, encrypted_db_key)
+        user_id = self.create(username, email, password_hash, encryption_salt, encrypted_db_key, role)
         
         if user_id:
             return user_id, None

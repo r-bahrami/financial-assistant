@@ -3,8 +3,9 @@ Authentication Routes
 Handles user login, logout, and registration
 """
 
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, abort
 from flask_login import login_user, logout_user, login_required, current_user
+from functools import wraps
 from datetime import timedelta
 import sys
 import os
@@ -16,6 +17,17 @@ from utils.user_session import UserSession
 from services.password_service import PasswordService
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+
+def admin_required(f):
+    """Decorator to require admin role."""
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not hasattr(current_user, 'is_admin') or not current_user.is_admin():
+            abort(403)  # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])

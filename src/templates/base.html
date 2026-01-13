@@ -90,7 +90,9 @@
                 <li><a href="/goals" {% if request.path.startswith('/goals') %}class="active"{% endif %}>Goals</a></li>
                 <li><a href="/recurring" {% if request.path.startswith('/recurring') %}class="active"{% endif %}>Recurring</a></li>
                 <li><a href="/reports" {% if request.path.startswith('/reports') %}class="active"{% endif %}>Reports</a></li>
-                <li><a href="/admin" {% if request.path.startswith('/admin') %}class="active"{% endif %}>⚙️</a></li>
+                {% if current_user and current_user.is_authenticated and current_user.is_admin() %}
+                <li><a href="/admin" {% if request.path.startswith('/admin') %}class="active"{% endif %}>⚙️ Admin</a></li>
+                {% endif %}
                 <li><a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" style="color: #ffcccc;">Logout ({{ current_user.username }})</a></li>
                 <form id="logout-form" method="POST" action="{{ url_for('auth.logout') }}" style="display: none;"></form>
                 {% else %}
