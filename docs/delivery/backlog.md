@@ -23,6 +23,7 @@ This backlog contains all Product Backlog Items (PBIs) for the Financial Assista
 | 9 | User | As a user, I want the system to identify recurring transactions so that I can manage subscriptions and bills | Done | [Details](./9/prd.md) - ✅ Auto-detect recurring patterns (Levenshtein matching), manage recurring list, alert on missing/changed payments, 5 frequency types, bulk scanner utility, /recurring UI page, 12 unit tests passing |
 | 10 | User | As a user, I want a financial health dashboard so that I can see my overall financial status at a glance | Done | [Details](./10/prd.md) - ✅ Financial health score (0-100), income/expenses/savings rate (30d), total balance, budget count, top 5 categories, quick links, /dashboard UI |
 | 11 | User | As a user, I want to see cash flow predictions and receive alerts so that I can plan ahead and avoid financial issues | Done | [Details](./11/prd.md) - ✅ Integrated with recurring transactions (alerts for missing payments), dashboard shows net income, foundation for future enhancements |
+| 12 | User | As a user, I want secure authentication and encrypted data storage so that my financial information is protected | Proposed | [Details](./12/prd.md) - User authentication, data encryption, multi-tenancy support |
 
 ## PBI History Log
 
@@ -76,9 +77,15 @@ Focus: Comprehensive financial health monitoring
 - Financial health dashboard
 - Cash flow and alerts
 
-### Phase 4: Optional Advanced Features (Time Permitting)
-Focus: Security, maintenance, and performance
+### Phase 4: Security & Multi-User (PBI 12)
+Focus: User authentication, data encryption, and security
+- User authentication and authorization
+- Encrypted data storage
+- Multi-tenant data isolation
 - Security hardening
+
+### Phase 5: Optional Advanced Features (Time Permitting)
+Focus: Maintenance and performance
 - Data backup/restore
 - Database migrations
 - Advanced logging
