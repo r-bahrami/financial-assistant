@@ -36,10 +36,12 @@
         
         .navbar-menu {
             display: flex;
-            gap: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
             list-style: none;
             margin: 0;
             padding: 0;
+            align-items: center;
         }
         
         .navbar-menu li a {
@@ -47,8 +49,9 @@
             text-decoration: none;
             font-weight: 500;
             transition: opacity 0.3s;
-            padding: 8px 15px;
+            padding: 8px 12px;
             border-radius: 5px;
+            white-space: nowrap;
         }
         
         .navbar-menu li a:hover {
@@ -66,9 +69,13 @@
             }
             
             .navbar-menu {
-                flex-wrap: wrap;
                 justify-content: center;
-                gap: 10px;
+                gap: 8px;
+            }
+            
+            .navbar-menu li a {
+                padding: 6px 10px;
+                font-size: 0.9rem;
             }
         }
     </style>
