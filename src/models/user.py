@@ -4,7 +4,7 @@ Handles user authentication and user data management
 """
 
 import sqlite3
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from datetime import datetime
 import secrets
 import sys
