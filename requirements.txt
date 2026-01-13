@@ -25,6 +25,7 @@ reportlab>=4.0.0
 
 # Security
 bcrypt>=4.0.0  # Password hashing
+Flask-Login>=0.6.3  # Session management
 
 # Future additions (uncomment when needed)
 # alembic==1.13.0  # For database migrations
