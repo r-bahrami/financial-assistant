@@ -80,7 +80,7 @@
         <div class="navbar-container">
             <a href="/" class="navbar-brand">💰 Financial Assistant</a>
             <ul class="navbar-menu">
-                {% if current_user and current_user.is_authenticated %}
+                {% if current_user.is_authenticated %}
                 <li><a href="/" {% if request.path == '/' %}class="active"{% endif %}>Home</a></li>
                 <li><a href="/dashboard" {% if request.path.startswith('/dashboard') %}class="active"{% endif %}>Dashboard</a></li>
                 <li><a href="/accounts" {% if request.path.startswith('/accounts') %}class="active"{% endif %}>Accounts</a></li>
@@ -90,7 +90,7 @@
                 <li><a href="/goals" {% if request.path.startswith('/goals') %}class="active"{% endif %}>Goals</a></li>
                 <li><a href="/recurring" {% if request.path.startswith('/recurring') %}class="active"{% endif %}>Recurring</a></li>
                 <li><a href="/reports" {% if request.path.startswith('/reports') %}class="active"{% endif %}>Reports</a></li>
-                {% if current_user and current_user.is_authenticated and current_user.is_admin() %}
+                {% if current_user.is_authenticated and current_user.is_admin() %}
                 <li><a href="/admin" {% if request.path.startswith('/admin') %}class="active"{% endif %}>⚙️ Admin</a></li>
                 {% endif %}
                 <li><a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" style="color: #ffcccc;">Logout ({{ current_user.username }})</a></li>
