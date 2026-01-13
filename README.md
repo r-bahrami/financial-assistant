@@ -103,7 +103,7 @@ python src/seed_rules.py
 - Comprehensive health score (0-100 algorithm)
 - 30-day income, expenses, and savings rate
 - Total net worth across all accounts
-- Top 5 spending categories
+- Top 5 spending categories (excludes transfer categories)
 - Quick links to all features
 - One-click financial overview
 
