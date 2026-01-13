@@ -113,7 +113,7 @@ class User:
         
         cursor.execute("""
             SELECT id, username, email, password_hash, encryption_salt, 
-                   encrypted_db_key, is_active, created_at, last_login
+                   encrypted_db_key, is_active, role, created_at, last_login
             FROM users
             WHERE username = ?
         """, (username,))
@@ -141,7 +141,7 @@ class User:
         
         cursor.execute("""
             SELECT id, username, email, password_hash, encryption_salt, 
-                   encrypted_db_key, is_active, created_at, last_login
+                   encrypted_db_key, is_active, role, created_at, last_login
             FROM users
             WHERE email = ?
         """, (email,))
