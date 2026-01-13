@@ -67,12 +67,12 @@ def get_financial_health():
         cursor.execute("SELECT COUNT(*) as total FROM budgets")
         total_budgets = cursor.fetchone()['total']
         
-        # Top categories (last 30 days)
+        # Top categories (last 30 days) - exclude transfers
         cursor.execute("""
             SELECT c.name, SUM(ABS(t.amount)) as total
             FROM transactions t
             JOIN categories c ON t.category_id = c.id
-            WHERE t.date >= ? AND t.amount < 0
+            WHERE t.date >= ? AND t.amount < 0 AND c.type != 'transfer'
             GROUP BY c.name
             ORDER BY total DESC
             LIMIT 5

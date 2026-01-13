@@ -151,6 +151,46 @@ def create_category():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@categories_bp.route('/api/<int:category_id>', methods=['PUT'])
+def update_category(category_id):
+    """
+    Update a category.
+    
+    Request JSON:
+        {
+            "name": str (optional),
+            "parent_id": int (optional)
+        }
+    
+    Returns:
+        JSON success message
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        name = data.get('name')
+        parent_id = data.get('parent_id')
+        
+        category_model = Category(current_app.config['DATABASE'])
+        success = category_model.update(category_id, name=name, parent_id=parent_id)
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'Category not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': 'Category updated successfully'
+        })
+    
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @categories_bp.route('/api/<int:category_id>', methods=['DELETE'])
 def delete_category(category_id):
     """Delete a category."""
@@ -205,6 +245,48 @@ def create_rule():
             'success': True,
             'message': f'Rule "{pattern}" created successfully',
             'rule_id': rule_id
+        })
+    
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@categories_bp.route('/api/rules/<int:rule_id>', methods=['PUT'])
+def update_rule(rule_id):
+    """
+    Update a categorization rule.
+    
+    Request JSON:
+        {
+            "pattern": str (optional),
+            "category_id": int (optional),
+            "priority": int (optional, 0-100)
+        }
+    
+    Returns:
+        JSON success message
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        pattern = data.get('pattern')
+        category_id = data.get('category_id')
+        priority = data.get('priority')
+        
+        engine = CategorizationEngine(current_app.config['DATABASE'])
+        success = engine.update_rule(rule_id, pattern=pattern, category_id=category_id, priority=priority)
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'Rule not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': 'Rule updated successfully'
         })
     
     except ValueError as e:

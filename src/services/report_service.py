@@ -116,31 +116,32 @@ class ReportService:
         conn = self._get_connection()
         cursor = conn.cursor()
         
-        # First, get total expenses for percentage calculation
+        # First, get total expenses for percentage calculation (exclude transfers)
         total_query = """
-            SELECT SUM(ABS(amount)) as total
-            FROM transactions
-            WHERE amount < 0
+            SELECT SUM(ABS(t.amount)) as total
+            FROM transactions t
+            LEFT JOIN categories c ON t.category_id = c.id
+            WHERE t.amount < 0 AND (c.type IS NULL OR c.type != 'transfer')
         """
         total_params = []
         
         if account_id:
-            total_query += " AND account_id = ?"
+            total_query += " AND t.account_id = ?"
             total_params.append(account_id)
         
         if start_date:
-            total_query += " AND date >= ?"
+            total_query += " AND t.date >= ?"
             total_params.append(self._format_date(start_date))
         
         if end_date:
-            total_query += " AND date <= ?"
+            total_query += " AND t.date <= ?"
             total_params.append(self._format_date(end_date))
         
         cursor.execute(total_query, total_params)
         total_row = cursor.fetchone()
         total_expenses = float(total_row['total']) if total_row['total'] else 0.0
         
-        # Now get category breakdown
+        # Now get category breakdown (exclude transfers)
         query = """
             SELECT 
                 COALESCE(c.name, 'Uncategorized') as category,
@@ -148,7 +149,7 @@ class ReportService:
                 COUNT(t.id) as transaction_count
             FROM transactions t
             LEFT JOIN categories c ON t.category_id = c.id
-            WHERE t.amount < 0
+            WHERE t.amount < 0 AND (c.type IS NULL OR c.type != 'transfer')
         """
         params = []
         
@@ -207,14 +208,14 @@ class ReportService:
         conn = self._get_connection()
         cursor = conn.cursor()
         
-        # Get top N categories by total spending
+        # Get top N categories by total spending (exclude transfers)
         top_categories_query = """
             SELECT 
                 COALESCE(c.name, 'Uncategorized') as category,
                 SUM(ABS(t.amount)) as total
             FROM transactions t
             LEFT JOIN categories c ON t.category_id = c.id
-            WHERE t.amount < 0
+            WHERE t.amount < 0 AND (c.type IS NULL OR c.type != 'transfer')
         """
         top_params = []
         
@@ -330,7 +331,7 @@ class ReportService:
                 AVG(ABS(t.amount)) as avg_per_transaction
             FROM transactions t
             LEFT JOIN categories c ON t.category_id = c.id
-            WHERE t.amount < 0
+            WHERE t.amount < 0 AND (c.type IS NULL OR c.type != 'transfer')
         """
         params = []
         
