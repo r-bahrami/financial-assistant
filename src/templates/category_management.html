@@ -117,7 +117,7 @@
                     <option value="">-- Select Type --</option>
                     <option value="income">💰 Income</option>
                     <option value="expense">💸 Expense</option>
-                    <option value="transfer">💹 Savings & Investments</option>
+                    <option value="transfer">🔄 Transfers & Neutral</option>
                 </select>
             </div>
             
@@ -150,11 +150,11 @@
 <div id="add-rule-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Add Categorization Rule</h2>
+            <h2 id="rule-modal-title">Add Categorization Rule</h2>
             <button class="close-btn" onclick="closeAddRuleModal()">&times;</button>
         </div>
         
-        <form id="add-rule-form" onsubmit="handleAddRule(event)">
+        <form id="add-rule-form" onsubmit="handleSaveRule(event)">
             <div class="form-group">
                 <label for="new-rule-pattern">Pattern *</label>
                 <input type="text" id="new-rule-pattern" required 
@@ -177,7 +177,7 @@
             
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeAddRuleModal()">Cancel</button>
-                <button type="submit" class="btn btn-success">Create Rule</button>
+                <button type="submit" class="btn btn-success" id="rule-submit-btn">Create Rule</button>
             </div>
         </form>
     </div>
@@ -495,6 +495,9 @@ function displayRules() {
             <td><span class="priority-badge">${rule.priority}</span></td>
             <td><span class="count-badge">${rule.match_count || 0}</span></td>
             <td>
+                <button class="btn btn-sm btn-primary" onclick="editRule(${rule.id})" style="margin-right: 5px;">
+                    Edit
+                </button>
                 <button class="btn btn-sm btn-danger" onclick="deleteRule(${rule.id}, '${rule.pattern}')">
                     Delete
                 </button>
@@ -591,13 +594,42 @@ async function handleAddCategory(event) {
 }
 
 // Add Rule Modal
+let editingRuleId = null;
+
 function openAddRuleModal() {
+    editingRuleId = null;
+    document.getElementById('rule-modal-title').textContent = 'Add Categorization Rule';
+    document.getElementById('rule-submit-btn').textContent = 'Create Rule';
     document.getElementById('add-rule-modal').classList.add('active');
     document.getElementById('add-rule-form').reset();
     populateRuleCategoryDropdown();
 }
 
+function editRule(ruleId) {
+    editingRuleId = ruleId;
+    const rule = allRules.find(r => r.id === ruleId);
+    
+    if (!rule) {
+        alert('Rule not found');
+        return;
+    }
+    
+    document.getElementById('rule-modal-title').textContent = 'Edit Categorization Rule';
+    document.getElementById('rule-submit-btn').textContent = 'Update Rule';
+    document.getElementById('new-rule-pattern').value = rule.pattern;
+    document.getElementById('new-rule-priority').value = rule.priority;
+    
+    populateRuleCategoryDropdown();
+    // Set the category dropdown after it's populated
+    setTimeout(() => {
+        document.getElementById('new-rule-category').value = rule.category_id;
+    }, 100);
+    
+    document.getElementById('add-rule-modal').classList.add('active');
+}
+
 function closeAddRuleModal() {
+    editingRuleId = null;
     document.getElementById('add-rule-modal').classList.remove('active');
 }
 
@@ -627,7 +659,7 @@ function populateRuleCategoryDropdown() {
     });
 }
 
-async function handleAddRule(event) {
+async function handleSaveRule(event) {
     event.preventDefault();
     
     const pattern = document.getElementById('new-rule-pattern').value.trim().toUpperCase();
@@ -635,8 +667,22 @@ async function handleAddRule(event) {
     const priority = parseInt(document.getElementById('new-rule-priority').value);
     
     try {
-        const response = await fetch('/categories/api/rules/create', {
-            method: 'POST',
+        let url, method, successMessage;
+        
+        if (editingRuleId) {
+            // Update existing rule
+            url = `/categories/api/rules/${editingRuleId}`;
+            method = 'PUT';
+            successMessage = `✅ Rule "${pattern}" updated successfully!`;
+        } else {
+            // Create new rule
+            url = '/categories/api/rules/create';
+            method = 'POST';
+            successMessage = `✅ Rule "${pattern}" created successfully!`;
+        }
+        
+        const response = await fetch(url, {
+            method: method,
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 pattern: pattern,
@@ -648,14 +694,14 @@ async function handleAddRule(event) {
         const data = await response.json();
         
         if (data.success) {
-            alert(`✅ Rule "${pattern}" created successfully!`);
+            alert(successMessage);
             closeAddRuleModal();
             await loadRules();
         } else {
             alert('Error: ' + data.error);
         }
     } catch (error) {
-        alert('Error creating rule: ' + error.message);
+        alert('Error saving rule: ' + error.message);
     }
 }
 

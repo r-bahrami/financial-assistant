@@ -5,12 +5,15 @@ Transaction routes for Financial Assistant
 from flask import Blueprint, render_template, jsonify, request, current_app
 import sys
 import os
+import sqlite3
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from models.transaction import Transaction
 from models.account import Account
+from models.note import TransactionNote
+from models.tag import Tag
 
 
 transactions_bp = Blueprint('transactions', __name__, url_prefix='/transactions')
@@ -61,11 +64,24 @@ def get_all_transactions():
             limit=limit
         )
         
-        return jsonify({
-            'success': True,
-            'transactions': transactions,
-            'count': len(transactions)
-        })
+        txn_ids = [txn["id"] for txn in transactions]
+        notes_map = TransactionNote.get_for_transactions(txn_ids)
+        tags_map = Tag.get_for_transactions(txn_ids)
+
+        enriched = []
+        for txn in transactions:
+            txn_copy = dict(txn)
+            txn_copy["note"] = notes_map.get(txn["id"])
+            txn_copy["tags"] = tags_map.get(txn["id"], [])
+            enriched.append(txn_copy)
+
+        return jsonify(
+            {
+                "success": True,
+                "transactions": enriched,
+                "count": len(enriched),
+            }
+        )
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -80,10 +96,10 @@ def get_transaction(transaction_id):
         if not transaction:
             return jsonify({'success': False, 'error': 'Transaction not found'}), 404
         
-        return jsonify({
-            'success': True,
-            'transaction': transaction
-        })
+        transaction["note"] = TransactionNote.get(transaction_id)
+        transaction["tags"] = Tag.get_for_transaction(transaction_id)
+
+        return jsonify({"success": True, "transaction": transaction})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -150,8 +166,6 @@ def get_transaction_stats():
         # - Negative amounts = Debits (expenses, withdrawals, payments made)
         # - Transfers = Neutral (between accounts, not affecting net worth)
         
-        import sqlite3
-        
         # Identify transfer transactions (category type = 'transfer')
         conn = sqlite3.connect(current_app.config['DATABASE'])
         conn.row_factory = sqlite3.Row
@@ -190,6 +204,58 @@ def get_transaction_stats():
             'stats': stats
         })
     
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@transactions_bp.route('/api/<int:transaction_id>/note', methods=['GET', 'PUT', 'DELETE'])
+def transaction_note(transaction_id: int):
+    """CRUD operations for a transaction note."""
+    try:
+        if request.method == 'GET':
+            note = TransactionNote.get(transaction_id)
+            return jsonify({'success': True, 'note': note})
+
+        if request.method == 'PUT':
+            payload = request.get_json() or {}
+            note_text = (payload.get('note') or '').strip()
+            if not note_text:
+                return jsonify({'success': False, 'error': 'Note text is required'}), 400
+
+            note = TransactionNote.upsert(transaction_id, note_text)
+            return jsonify({'success': True, 'note': note})
+
+        deleted = TransactionNote.delete(transaction_id)
+        if not deleted:
+            return jsonify({'success': False, 'error': 'Note not found'}), 404
+        return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@transactions_bp.route('/api/bulk/delete', methods=['POST'])
+def bulk_delete_transactions():
+    """Delete multiple transactions at once."""
+    try:
+        payload = request.get_json() or {}
+        transaction_ids = payload.get('transaction_ids') or []
+
+        if not transaction_ids:
+            return jsonify({'success': False, 'error': 'No transaction IDs provided'}), 400
+
+        conn = sqlite3.connect(current_app.config['DATABASE'])
+        cursor = conn.cursor()
+        placeholders = ','.join(['?'] * len(transaction_ids))
+        cursor.execute(
+            f"DELETE FROM transactions WHERE id IN ({placeholders})",
+            transaction_ids,
+        )
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'deleted': deleted})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

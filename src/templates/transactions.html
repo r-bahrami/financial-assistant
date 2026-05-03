@@ -25,6 +25,7 @@
             <button id="toggle-advanced-btn" class="btn btn-secondary">⚙️ More Filters</button>
             <button id="apply-filters-btn" class="btn btn-primary">Apply</button>
             <button id="clear-filters-btn" class="btn btn-secondary">Clear All</button>
+            <button id="manage-tags-btn" class="btn btn-secondary">🏷️ Manage Tags</button>
         </div>
         
         <!-- Advanced Filters (collapsible) -->
@@ -46,7 +47,22 @@
                         <option value="expense">Expenses Only</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <label for="tag-filter">Tags:</label>
+                    <select id="tag-filter" class="form-select" multiple size="4"></select>
+                </div>
             </div>
+        </div>
+    </div>
+    <div id="bulk-toolbar" class="bulk-toolbar" style="display: none;">
+        <div class="bulk-info">
+            <strong id="bulk-count">0 selected</strong>
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-primary btn-sm" id="bulk-categorize-btn">Categorize</button>
+            <button class="btn btn-secondary btn-sm" id="bulk-tag-btn">Tag</button>
+            <button class="btn btn-danger btn-sm" id="bulk-delete-btn">Delete</button>
+            <button class="btn btn-secondary btn-sm" id="bulk-clear-btn">Clear</button>
         </div>
     </div>
     <!-- Statistics Cards -->
@@ -95,10 +111,12 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="select-all-checkbox"></th>
                             <th>Date</th>
                             <th>Account</th>
                             <th>Description</th>
                             <th>Category</th>
+                            <th>Tags</th>
                             <th>Amount</th>
                             <th>Actions</th>
                         </tr>
@@ -371,18 +389,331 @@
         box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
     }
     
+    .note-indicator {
+        margin-left: 6px;
+        color: #ff9800;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+    
+    .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        color: white;
+        margin: 2px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    
+    .muted {
+        color: #999;
+        font-style: italic;
+    }
+    
+    .bulk-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #e8f0fe 0%, #f8f9fc 100%);
+        border: 1px solid #d0d9ff;
+        border-radius: 8px;
+        padding: 10px 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    
+    .bulk-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+    }
+    
+    .modal-content {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 480px;
+        max-width: 90%;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+    
+    .modal-content textarea {
+        width: 100%;
+        min-height: 140px;
+        border: 1px solid #d5d9f6;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 0.95rem;
+        resize: vertical;
+    }
+    
+    .tag-selection-list {
+        display: grid;
+        gap: 8px;
+        max-height: 280px;
+        overflow-y: auto;
+    }
+    
+    .tag-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .tag-row input[type="text"] {
+        flex: 1;
+        padding: 6px 10px;
+        border: 1px solid #d0d9ff;
+        border-radius: 6px;
+    }
+    
+    .tag-row input[type="color"] {
+        width: 48px;
+        height: 32px;
+        border: none;
+        background: none;
+        cursor: pointer;
+    }
+    
+    .manage-tags-list {
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 16px;
+        padding-right: 6px;
+    }
+    
+    .manage-tags-header {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    
+    .manage-tags-header input[type="text"] {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #d0d9ff;
+    }
+    
+    .manage-tags-header input[type="color"] {
+        width: 48px;
+        border: none;
+        background: none;
+    }
+    
+    .tag-cell {
+        min-width: 160px;
+    }
+    
     .btn-sm {
         padding: 4px 10px;
         font-size: 0.85rem;
     }
 </style>
 
+<!-- Note Modal -->
+<div id="note-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Transaction Note</h3>
+        <textarea id="note-text" placeholder="Add note details..."></textarea>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="closeNoteModal()">Close</button>
+            <button class="btn btn-danger btn-sm" id="note-delete-btn" style="display:none;">Delete Note</button>
+            <button class="btn btn-primary btn-sm" id="note-save-btn">Save Note</button>
+        </div>
+    </div>
+</div>
+
+<!-- Tag Modal -->
+<div id="tag-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Select Tags</h3>
+        <div id="tag-modal-list" class="tag-selection-list"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="closeTagModal()">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="tag-save-btn">Save Tags</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Tags Modal -->
+<div id="manage-tags-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Manage Tags</h3>
+        <div class="manage-tags-header">
+            <input type="text" id="new-tag-name" placeholder="New tag name">
+            <input type="color" id="new-tag-color" value="#667eea">
+            <button class="btn btn-primary btn-sm" id="create-tag-btn">Add</button>
+        </div>
+        <div id="manage-tags-list" class="manage-tags-list"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary btn-sm" onclick="closeManageTagsModal()">Close</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentAccountFilter = '';
     let currentDateFrom = '';
     let currentDateTo = '';
-    
-    // Format number with thousands separator
+    let currentTagFilter = [];
+
+    let allCategories = [];
+    let allTags = [];
+    let transactionsCache = new Map();
+    let currentTransactions = [];
+    let selectedTransactions = new Set();
+
+    let activeNoteTransactionId = null;
+    let activeTagTransactionId = null;
+    let tagModalBulkMode = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAccounts();
+        loadCategories();
+        loadTags();
+        loadStats();
+        loadTransactions();
+        setupEventHandlers();
+    });
+
+    function setupEventHandlers() {
+        const searchInput = document.getElementById('search-input');
+        const clearSearchBtn = document.getElementById('clear-search-btn');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (event) => {
+            clearSearchBtn.style.display = event.target.value ? 'inline-block' : 'none';
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadStats();
+                loadTransactions();
+            }, 500);
+        });
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearchBtn.style.display = 'none';
+            loadStats();
+            loadTransactions();
+        });
+
+        document.getElementById('toggle-advanced-btn').addEventListener('click', () => {
+            const advFilters = document.getElementById('advanced-filters');
+            const isVisible = advFilters.style.display !== 'none';
+            advFilters.style.display = isVisible ? 'none' : 'block';
+            document.getElementById('toggle-advanced-btn').textContent =
+                isVisible ? '⚙️ More Filters' : '⚙️ Hide Filters';
+        });
+
+        document.getElementById('apply-filters-btn').addEventListener('click', () => {
+            currentAccountFilter = document.getElementById('account-filter').value;
+            currentDateFrom = document.getElementById('date-from').value;
+            currentDateTo = document.getElementById('date-to').value;
+            const tagSelect = document.getElementById('tag-filter');
+            currentTagFilter = Array.from(tagSelect.selectedOptions).map((option) => option.value);
+            loadStats();
+            loadTransactions();
+        });
+
+        document.getElementById('clear-filters-btn').addEventListener('click', () => {
+            document.getElementById('account-filter').value = '';
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            document.getElementById('search-input').value = '';
+            document.getElementById('amount-min').value = '';
+            document.getElementById('amount-max').value = '';
+            document.getElementById('type-filter').value = 'all';
+            document.getElementById('tag-filter').selectedIndex = -1;
+            document.getElementById('clear-search-btn').style.display = 'none';
+            currentAccountFilter = '';
+            currentDateFrom = '';
+            currentDateTo = '';
+            currentTagFilter = [];
+            loadStats();
+            loadTransactions();
+        });
+
+        document.getElementById('manage-tags-btn').addEventListener('click', openManageTagsModal);
+        document.getElementById('note-save-btn').addEventListener('click', saveNote);
+        document.getElementById('note-delete-btn').addEventListener('click', () => deleteNote(false));
+        document.getElementById('tag-save-btn').addEventListener('click', saveTagSelection);
+        document.getElementById('create-tag-btn').addEventListener('click', createTag);
+
+        document.getElementById('bulk-categorize-btn').addEventListener('click', openBulkCategoryPicker);
+        document.getElementById('bulk-tag-btn').addEventListener('click', openBulkTagModal);
+        document.getElementById('bulk-delete-btn').addEventListener('click', bulkDeleteTransactions);
+        document.getElementById('bulk-clear-btn').addEventListener('click', clearSelection);
+
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        selectAllCheckbox.addEventListener('change', (event) => {
+            if (event.target.checked) {
+                currentTransactions.forEach((txn) => selectedTransactions.add(txn.id));
+            } else {
+                currentTransactions.forEach((txn) => selectedTransactions.delete(txn.id));
+            }
+            displayTransactions(currentTransactions);
+            refreshSelectionUI();
+        });
+
+        ['note-modal', 'tag-modal', 'manage-tags-modal'].forEach((modalId) => {
+            const modal = document.getElementById(modalId);
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    if (modalId === 'note-modal') {
+                        closeNoteModal();
+                    } else if (modalId === 'tag-modal') {
+                        closeTagModal();
+                    } else {
+                        closeManageTagsModal();
+                    }
+                }
+            });
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            if (document.getElementById('note-modal').classList.contains('active')) {
+                closeNoteModal();
+            }
+            if (document.getElementById('tag-modal').classList.contains('active')) {
+                closeTagModal();
+            }
+            if (document.getElementById('manage-tags-modal').classList.contains('active')) {
+                closeManageTagsModal();
+            }
+        });
+    }
+
     function formatCurrency(amount) {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -391,26 +722,26 @@
             maximumFractionDigits: 2
         }).format(amount);
     }
-    
-    let allCategories = [];
-    
-    // Load transactions on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        loadAccounts();
-        loadCategories();
-        loadStats();
-        loadTransactions();
-    });
-    
-    // Load accounts for filter
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) {
+            return '';
+        }
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     async function loadAccounts() {
         try {
             const response = await fetch('/api/accounts');
             const data = await response.json();
-            
             if (data.success) {
                 const select = document.getElementById('account-filter');
-                data.accounts.forEach(account => {
+                data.accounts.forEach((account) => {
                     const option = document.createElement('option');
                     option.value = account.id;
                     option.textContent = `${account.name} (${account.type})`;
@@ -421,77 +752,95 @@
             console.error('Error loading accounts:', error);
         }
     }
-    
-    // Load categories
+
     async function loadCategories() {
         try {
-            // Force fresh data with cache buster
-            const response = await fetch(`/categories/api/all?_=${Date.now()}`, {
-                cache: 'no-store'
-            });
+            const response = await fetch(`/categories/api/all?_=${Date.now()}`, { cache: 'no-store' });
             const data = await response.json();
-            
             if (data.success) {
-                allCategories = data.categories;
-                console.log(`Loaded ${allCategories.length} categories`);
+                allCategories = data.categories || [];
             }
         } catch (error) {
             console.error('Error loading categories:', error);
         }
     }
-    
-    // Build query params
+
+    async function loadTags() {
+        try {
+            const response = await fetch('/tags/api');
+            const data = await response.json();
+            if (data.success) {
+                allTags = data.tags || [];
+            } else {
+                allTags = [];
+            }
+        } catch (error) {
+            console.error('Error loading tags:', error);
+            allTags = [];
+        }
+        populateTagFilter();
+        if (document.getElementById('manage-tags-modal').classList.contains('active')) {
+            renderManageTagsList();
+        }
+        return allTags;
+    }
+
+    function populateTagFilter() {
+        const select = document.getElementById('tag-filter');
+        if (!select) return;
+        const selectionSet = new Set(currentTagFilter.map(String));
+        select.innerHTML = '';
+        allTags.forEach((tag) => {
+            const option = document.createElement('option');
+            option.value = String(tag.id);
+            option.textContent = tag.name;
+            option.selected = selectionSet.has(String(tag.id));
+            select.appendChild(option);
+        });
+        currentTagFilter = currentTagFilter.filter((id) =>
+            allTags.some((tag) => String(tag.id) === String(id))
+        );
+    }
+
     function buildQueryParams() {
         const params = new URLSearchParams();
-        
-        // Basic filters
         if (currentAccountFilter) params.append('account_id', currentAccountFilter);
         if (currentDateFrom) params.append('date_from', currentDateFrom);
         if (currentDateTo) params.append('date_to', currentDateTo);
-        
-        // Search
-        const search = document.getElementById('search-input').value.trim();
-        if (search) params.append('search', search);
-        
-        // Advanced filters
+        if (currentTagFilter.length) params.append('tag_ids', currentTagFilter.join(','));
+
         const amountMin = document.getElementById('amount-min').value;
         const amountMax = document.getElementById('amount-max').value;
         const typeFilter = document.getElementById('type-filter').value;
-        
+
         if (amountMin) params.append('amount_min', amountMin);
         if (amountMax) params.append('amount_max', amountMax);
         if (typeFilter && typeFilter !== 'all') params.append('type', typeFilter);
-        
+
+        const search = document.getElementById('search-input').value.trim();
+        if (search) params.append('search', search);
+
         return params.toString();
     }
-    
-    // Load statistics
+
     async function loadStats() {
         try {
             const params = buildQueryParams();
-            const url = `/transactions/api/stats${params ? '?' + params : ''}`;
-            
-            const response = await fetch(url);
+            const response = await fetch(`/transactions/api/stats${params ? '?' + params : ''}`);
             const data = await response.json();
-            
             if (data.success) {
                 document.getElementById('total-transactions').textContent = data.stats.total_transactions.toLocaleString();
                 document.getElementById('total-income').textContent = formatCurrency(data.stats.total_credits);
                 document.getElementById('total-expenses').textContent = formatCurrency(data.stats.total_debits);
                 document.getElementById('total-transfers').textContent = formatCurrency(data.stats.total_transfers);
                 document.getElementById('net-flow').textContent = formatCurrency(data.stats.net_cash_flow);
-                
-                // Update net cash flow card color based on value
+
                 const netFlowCard = document.querySelector('.stat-card.net');
-                const netFlow = data.stats.net_cash_flow;
-                
-                // Remove all color classes
+                const netValue = data.stats.net_cash_flow;
                 netFlowCard.classList.remove('positive-flow', 'negative-flow', 'zero-flow');
-                
-                // Add appropriate class based on value
-                if (netFlow > 0) {
+                if (netValue > 0) {
                     netFlowCard.classList.add('positive-flow');
-                } else if (netFlow < 0) {
+                } else if (netValue < 0) {
                     netFlowCard.classList.add('negative-flow');
                 } else {
                     netFlowCard.classList.add('zero-flow');
@@ -501,171 +850,197 @@
             console.error('Error loading stats:', error);
         }
     }
-    
-    // Load transactions
+
     async function loadTransactions() {
         const loading = document.getElementById('loading');
         const errorMessage = document.getElementById('error-message');
         const emptyState = document.getElementById('empty-state');
         const container = document.getElementById('transactions-container');
-        
+
         loading.style.display = 'block';
         errorMessage.style.display = 'none';
         emptyState.style.display = 'none';
         container.style.display = 'none';
-        
+
         try {
             const params = buildQueryParams();
-            // Add timestamp to prevent caching
             const cacheBuster = params ? `${params}&_=${Date.now()}` : `?_=${Date.now()}`;
-            const url = `/transactions/api/all${cacheBuster}`;
-            
-            const response = await fetch(url, {
-                cache: 'no-store'  // Force fresh data
-            });
+            const response = await fetch(`/transactions/api/all${cacheBuster}`, { cache: 'no-store' });
             const data = await response.json();
-            
-            loading.style.display = 'none';
-            
+
             if (!data.success) {
                 throw new Error(data.error || 'Failed to load transactions');
             }
-            
-            if (data.transactions.length === 0) {
+
+            currentTransactions = data.transactions || [];
+            transactionsCache = new Map(currentTransactions.map((txn) => [txn.id, txn]));
+            selectedTransactions = new Set([...selectedTransactions].filter((id) => transactionsCache.has(id)));
+
+            loading.style.display = 'none';
+
+            if (currentTransactions.length === 0) {
+                selectedTransactions.clear();
+                refreshSelectionUI();
                 emptyState.style.display = 'block';
                 return;
             }
-            
-            displayTransactions(data.transactions);
+
+            displayTransactions(currentTransactions);
             container.style.display = 'block';
-            
+            refreshSelectionUI();
         } catch (error) {
             loading.style.display = 'none';
             errorMessage.textContent = error.message;
             errorMessage.style.display = 'block';
         }
     }
-    
-    // Get category display name
+
+    function displayTransactions(transactions) {
+        const tbody = document.getElementById('transactions-tbody');
+        tbody.innerHTML = '';
+
+        transactions.forEach((txn) => {
+            const tr = document.createElement('tr');
+            const amountClass = txn.category_type === 'transfer'
+                ? 'amount-neutral'
+                : (txn.amount >= 0 ? 'amount-positive' : 'amount-negative');
+            const amountSign = txn.amount >= 0 ? '+' : '-';
+            const formattedAmount = formatCurrency(Math.abs(txn.amount)).replace('$', '');
+            const noteIndicator = txn.note
+                ? `<span class="note-indicator" title="${escapeHtml(txn.note.note).replace(/"/g, '&quot;')}">📝</span>`
+                : '';
+            const tagsHtml = (txn.tags && txn.tags.length)
+                ? txn.tags.map((tag) => `<span class="tag-chip" style="background:${tag.color}">${escapeHtml(tag.name)}</span>`).join('')
+                : '<span class="muted">No tags</span>';
+            const categoryHtml = buildCategoryButton(txn.id, txn.category_id);
+            const isSelected = selectedTransactions.has(txn.id) ? 'checked' : '';
+
+            tr.innerHTML = `
+                <td><input type="checkbox" class="txn-select" data-id="${txn.id}" ${isSelected}></td>
+                <td>${escapeHtml(txn.date)}</td>
+                <td>${escapeHtml(txn.account_name || 'Unknown')}</td>
+                <td>${escapeHtml(txn.description)} ${noteIndicator}</td>
+                <td>${categoryHtml}</td>
+                <td class="tag-cell">${tagsHtml}</td>
+                <td class="${amountClass}">${amountSign}$${formattedAmount}</td>
+                <td>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-secondary btn-sm note-btn" title="Edit note">📝</button>
+                        <button class="btn btn-secondary btn-sm tag-btn" title="Edit tags">🏷️</button>
+                        <button class="btn btn-danger btn-sm delete-btn">Delete</button>
+                    </div>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+
+            tr.querySelector('.txn-select').addEventListener('change', (event) => {
+                toggleTransactionSelection(txn.id, event.target.checked);
+            });
+            tr.querySelector('.note-btn').addEventListener('click', () => openNoteModal(txn.id));
+            tr.querySelector('.tag-btn').addEventListener('click', () => openTagModal(txn.id));
+            tr.querySelector('.delete-btn').addEventListener('click', () => deleteTransaction(txn.id));
+        });
+
+        updateMasterCheckbox();
+    }
+
+    function toggleTransactionSelection(transactionId, isSelected) {
+        if (isSelected) {
+            selectedTransactions.add(transactionId);
+        } else {
+            selectedTransactions.delete(transactionId);
+        }
+        refreshSelectionUI();
+    }
+
+    function refreshSelectionUI() {
+        const toolbar = document.getElementById('bulk-toolbar');
+        const bulkCount = document.getElementById('bulk-count');
+        const count = selectedTransactions.size;
+
+        if (count > 0) {
+            toolbar.style.display = 'flex';
+            bulkCount.textContent = `${count} selected`;
+        } else {
+            toolbar.style.display = 'none';
+        }
+
+        updateMasterCheckbox();
+    }
+
+    function updateMasterCheckbox() {
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        if (!selectAllCheckbox) return;
+
+        if (currentTransactions.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            return;
+        }
+
+        const selectedCount = currentTransactions.filter((txn) => selectedTransactions.has(txn.id)).length;
+        selectAllCheckbox.checked = selectedCount > 0 && selectedCount === currentTransactions.length;
+        selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < currentTransactions.length;
+    }
+
+    function clearSelection() {
+        if (selectedTransactions.size === 0) return;
+        selectedTransactions.clear();
+        displayTransactions(currentTransactions);
+        refreshSelectionUI();
+    }
+
     function getCategoryDisplayName(categoryId) {
         if (!categoryId) return 'Uncategorized';
-        
-        const cat = allCategories.find(c => c.id === categoryId);
-        if (!cat) return 'Unknown';
-        
-        // Build full path
+        const category = allCategories.find((c) => c.id === categoryId);
+        if (!category) return 'Uncategorized';
+
         const path = [];
-        let current = cat;
-        
+        let current = category;
         while (current) {
             path.unshift(current.name);
-            if (current.parent_id) {
-                current = allCategories.find(c => c.id === current.parent_id);
-            } else {
-                current = null;
-            }
+            current = allCategories.find((c) => c.id === current.parent_id);
         }
-        
-        // Return last 2 levels for brevity
-        return path.length > 2 ? path.slice(-2).join(' → ') : path.join(' → ');
+        return path.slice(-2).join(' → ') || category.name;
     }
-    
-    // Build category button HTML
+
     function buildCategoryButton(transactionId, currentCategoryId) {
         const displayName = getCategoryDisplayName(currentCategoryId);
         const buttonClass = currentCategoryId ? 'category-btn categorized' : 'category-btn uncategorized';
-        
-        return `<button class="${buttonClass}" onclick="event.stopPropagation(); openCategoryPickerSafe(${transactionId}, this)">${displayName}</button>`;
+        return `<button class="${buttonClass}" onclick="event.stopPropagation(); openCategoryPickerSafe(${transactionId}, this)">${escapeHtml(displayName)}</button>`;
     }
-    
-    // Safe wrapper for opening category picker
+
     function openCategoryPickerSafe(transactionId, buttonElement) {
         try {
-            console.log('Opening category picker for transaction:', transactionId);
-            
             if (typeof openCategoryPicker === 'undefined') {
-                console.error('openCategoryPicker function not defined!');
                 alert('Category picker not loaded. Please refresh the page.');
                 return;
             }
-            
             openCategoryPicker(transactionId, buttonElement);
         } catch (error) {
             console.error('Error opening category picker:', error);
             alert('Error opening category picker: ' + error.message);
         }
     }
-    
-    // Display transactions in table
-    function displayTransactions(transactions) {
-        const tbody = document.getElementById('transactions-tbody');
-        tbody.innerHTML = '';
-        
-        transactions.forEach(txn => {
-            const tr = document.createElement('tr');
-            
-            // Determine amount color based on category type
-            let amountClass;
-            if (txn.category_type === 'transfer') {
-                // Transfers are neutral (purple/blue)
-                amountClass = 'amount-neutral';
-            } else {
-                // Income/expenses are green/red
-                amountClass = txn.amount >= 0 ? 'amount-positive' : 'amount-negative';
-            }
-            
-            const amountSign = txn.amount >= 0 ? '+' : '';
-            const formattedAmount = formatCurrency(Math.abs(txn.amount)).replace('$', '');
-            
-            // Category display
-            const categoryHtml = buildCategoryButton(txn.id, txn.category_id);
-            
-            tr.innerHTML = `
-                <td>${txn.date}</td>
-                <td>${txn.account_name || 'Unknown'}</td>
-                <td>${txn.description}</td>
-                <td>${categoryHtml}</td>
-                <td class="${amountClass}">${amountSign}$${formattedAmount}</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="deleteTransaction(${txn.id})">Delete</button>
-                </td>
-            `;
-            
-            tbody.appendChild(tr);
-        });
-    }
-    
-    // Update transaction category
+
     async function updateTransactionCategory(transactionId, categoryId, learn = false) {
         try {
             const response = await fetch(`/categories/api/categorize/${transactionId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    category_id: categoryId ? parseInt(categoryId) : null,
-                    learn: learn  // Learn from categorization if enabled
+                    category_id: categoryId !== null && categoryId !== undefined ? parseInt(categoryId, 10) : null,
+                    learn
                 })
             });
-            
             const data = await response.json();
-            
             if (data.success) {
-                console.log('✓ Category updated successfully');
-                
-                // Small delay to ensure database write completes
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                // Reload categories first to get updated data
                 await loadCategories();
-                
-                // Then reload stats and transactions to show updated category
                 await loadStats();
                 await loadTransactions();
-                
                 if (data.rule_created) {
-                    console.log('✓ New categorization rule created automatically!');
+                    console.log('New categorization rule created automatically.');
                 }
             } else {
                 alert('Error updating category: ' + data.error);
@@ -677,23 +1052,45 @@
             loadTransactions();
         }
     }
-    
-    // Delete transaction
+
+    async function bulkCategorizeTransactions(transactionIds, categoryId, learn = false) {
+        try {
+            const response = await fetch('/categories/api/bulk-categorize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transaction_ids: transactionIds,
+                    category_id: categoryId,
+                    learn
+                })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                alert('Bulk categorize failed: ' + data.error);
+                return;
+            }
+            await loadCategories();
+            await loadStats();
+            await loadTransactions();
+            clearSelection();
+        } catch (error) {
+            console.error('Bulk categorize error:', error);
+            alert('Bulk categorize error: ' + error.message);
+        }
+    }
+    window.bulkCategorizeTransactions = bulkCategorizeTransactions;
+
     async function deleteTransaction(id) {
         if (!confirm('Are you sure you want to delete this transaction?')) {
             return;
         }
-        
         try {
-            const response = await fetch(`/transactions/api/${id}`, {
-                method: 'DELETE'
-            });
-            
+            const response = await fetch(`/transactions/api/${id}`, { method: 'DELETE' });
             const data = await response.json();
-            
             if (data.success) {
-                loadStats();
-                loadTransactions();
+                selectedTransactions.delete(id);
+                await loadStats();
+                await loadTransactions();
             } else {
                 alert('Error: ' + data.error);
             }
@@ -701,64 +1098,325 @@
             alert('Error deleting transaction: ' + error.message);
         }
     }
-    
-    // Search with debouncing (500ms delay)
-    let searchTimeout;
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        const clearBtn = document.getElementById('clear-search-btn');
-        clearBtn.style.display = e.target.value ? 'inline-block' : 'none';
-        
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            loadStats();
-            loadTransactions();
-        }, 500);
-    });
-    
-    // Clear search button
-    document.getElementById('clear-search-btn').addEventListener('click', () => {
-        document.getElementById('search-input').value = '';
-        document.getElementById('clear-search-btn').style.display = 'none';
-        loadStats();
-        loadTransactions();
-    });
-    
-    // Toggle advanced filters
-    document.getElementById('toggle-advanced-btn').addEventListener('click', () => {
-        const advFilters = document.getElementById('advanced-filters');
-        const isVisible = advFilters.style.display !== 'none';
-        advFilters.style.display = isVisible ? 'none' : 'block';
-        document.getElementById('toggle-advanced-btn').textContent = 
-            isVisible ? '⚙️ More Filters' : '⚙️ Hide Filters';
-    });
-    
-    // Apply filters button
-    document.getElementById('apply-filters-btn').addEventListener('click', () => {
-        currentAccountFilter = document.getElementById('account-filter').value;
-        currentDateFrom = document.getElementById('date-from').value;
-        currentDateTo = document.getElementById('date-to').value;
-        loadStats();
-        loadTransactions();
-    });
-    
-    // Clear filters button
-    document.getElementById('clear-filters-btn').addEventListener('click', () => {
-        // Clear all filter inputs
-        document.getElementById('account-filter').value = '';
-        document.getElementById('date-from').value = '';
-        document.getElementById('date-to').value = '';
-        document.getElementById('search-input').value = '';
-        document.getElementById('amount-min').value = '';
-        document.getElementById('amount-max').value = '';
-        document.getElementById('type-filter').value = 'all';
-        document.getElementById('clear-search-btn').style.display = 'none';
-        
-        currentAccountFilter = '';
-        currentDateFrom = '';
-        currentDateTo = '';
-        loadStats();
-        loadTransactions();
-    });
+
+    async function bulkDeleteTransactions() {
+        if (selectedTransactions.size === 0) {
+            alert('Select at least one transaction first.');
+            return;
+        }
+        if (!confirm(`Delete ${selectedTransactions.size} transaction(s)? This cannot be undone.`)) {
+            return;
+        }
+        try {
+            const response = await fetch('/transactions/api/bulk/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transaction_ids: Array.from(selectedTransactions) })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                alert('Bulk delete failed: ' + data.error);
+                return;
+            }
+            clearSelection();
+            await loadStats();
+            await loadTransactions();
+        } catch (error) {
+            console.error('Bulk delete error:', error);
+            alert('Bulk delete error: ' + error.message);
+        }
+    }
+
+    function openBulkCategoryPicker() {
+        if (selectedTransactions.size === 0) {
+            alert('Select at least one transaction first.');
+            return;
+        }
+        if (typeof openCategoryPickerForBulk !== 'function') {
+            alert('Category picker not available.');
+            return;
+        }
+        openCategoryPickerForBulk(Array.from(selectedTransactions));
+    }
+
+    function openNoteModal(transactionId) {
+        activeNoteTransactionId = transactionId;
+        const txn = transactionsCache.get(transactionId);
+        const note = txn && txn.note ? txn.note.note : '';
+        document.getElementById('note-text').value = note || '';
+        document.getElementById('note-delete-btn').style.display = note ? 'inline-block' : 'none';
+        document.getElementById('note-modal').classList.add('active');
+    }
+
+    function closeNoteModal() {
+        activeNoteTransactionId = null;
+        document.getElementById('note-modal').classList.remove('active');
+        document.getElementById('note-text').value = '';
+    }
+
+    async function saveNote() {
+        if (!activeNoteTransactionId) return;
+        const noteText = document.getElementById('note-text').value.trim();
+        if (!noteText) {
+            await deleteNote(true);
+            return;
+        }
+        try {
+            const response = await fetch(`/transactions/api/${activeNoteTransactionId}/note`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: noteText })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                alert('Error saving note: ' + data.error);
+                return;
+            }
+            closeNoteModal();
+            await loadTransactions();
+        } catch (error) {
+            alert('Error saving note: ' + error.message);
+        }
+    }
+
+    async function deleteNote(skipConfirm = false) {
+        if (!activeNoteTransactionId) return;
+        if (!skipConfirm && !confirm('Remove this note?')) {
+            return;
+        }
+        try {
+            const response = await fetch(`/transactions/api/${activeNoteTransactionId}/note`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!data.success) {
+                alert('Error removing note: ' + data.error);
+                return;
+            }
+            closeNoteModal();
+            await loadTransactions();
+        } catch (error) {
+            alert('Error removing note: ' + error.message);
+        }
+    }
+
+    function openTagModal(transactionId, isBulk = false) {
+        tagModalBulkMode = isBulk;
+        activeTagTransactionId = isBulk ? null : transactionId;
+        const modal = document.getElementById('tag-modal');
+        const saveBtn = document.getElementById('tag-save-btn');
+        saveBtn.textContent = isBulk ? 'Apply Tags' : 'Save Tags';
+
+        let selectedIds = [];
+        if (!isBulk && transactionsCache.has(transactionId)) {
+            selectedIds = (transactionsCache.get(transactionId).tags || []).map((tag) => String(tag.id));
+        }
+        renderTagModalList(selectedIds);
+        modal.classList.add('active');
+    }
+
+    function openBulkTagModal() {
+        if (selectedTransactions.size === 0) {
+            alert('Select at least one transaction first.');
+            return;
+        }
+        openTagModal(null, true);
+    }
+
+    function renderTagModalList(selectedIds) {
+        const container = document.getElementById('tag-modal-list');
+        const selectedSet = new Set(selectedIds);
+        container.innerHTML = '';
+        if (!allTags.length) {
+            container.innerHTML = '<p class="muted">No tags defined yet.</p>';
+            return;
+        }
+        allTags.forEach((tag) => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.alignItems = 'center';
+            label.style.gap = '10px';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = String(tag.id);
+            checkbox.checked = selectedSet.has(String(tag.id));
+            const chip = document.createElement('span');
+            chip.className = 'tag-chip';
+            chip.style.background = tag.color || '#667eea';
+            chip.textContent = tag.name;
+            label.appendChild(checkbox);
+            label.appendChild(chip);
+            container.appendChild(label);
+        });
+    }
+
+    function closeTagModal() {
+        document.getElementById('tag-modal').classList.remove('active');
+        activeTagTransactionId = null;
+        tagModalBulkMode = false;
+    }
+
+    async function saveTagSelection() {
+        const selectedIds = Array.from(
+            document.querySelectorAll('#tag-modal-list input[type="checkbox"]:checked')
+        ).map((input) => parseInt(input.value, 10));
+
+        try {
+            if (tagModalBulkMode) {
+                if (selectedTransactions.size === 0) {
+                    alert('Select at least one transaction first.');
+                    return;
+                }
+                await saveBulkTags(selectedIds);
+            } else if (activeTagTransactionId) {
+                await saveTransactionTags(activeTagTransactionId, selectedIds);
+            }
+            closeTagModal();
+            await loadTransactions();
+        } catch (error) {
+            alert('Error saving tags: ' + error.message);
+        }
+    }
+
+    async function saveTransactionTags(transactionId, tagIds) {
+        const response = await fetch(`/tags/api/transaction/${transactionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag_ids: tagIds })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to save tags');
+        }
+    }
+
+    async function saveBulkTags(tagIds) {
+        const response = await fetch('/tags/api/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                transaction_ids: Array.from(selectedTransactions),
+                tag_ids: tagIds
+            })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to apply tags');
+        }
+        await loadTransactions();
+    }
+
+    function openManageTagsModal() {
+        document.getElementById('manage-tags-modal').classList.add('active');
+        renderManageTagsList();
+    }
+
+    function closeManageTagsModal() {
+        document.getElementById('manage-tags-modal').classList.remove('active');
+    }
+
+    function renderManageTagsList() {
+        const container = document.getElementById('manage-tags-list');
+        container.innerHTML = '';
+        if (!allTags.length) {
+            container.innerHTML = '<p class="muted">No tags defined yet. Add your first tag above.</p>';
+            return;
+        }
+        allTags.forEach((tag) => {
+            const row = document.createElement('div');
+            row.className = 'tag-row';
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.value = tag.name;
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.value = tag.color || '#667eea';
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn btn-primary btn-sm';
+            saveBtn.textContent = 'Save';
+            saveBtn.addEventListener('click', async () => {
+                try {
+                    await saveTagEdits(tag.id, nameInput.value, colorInput.value);
+                    await loadTags();
+                    await loadTransactions();
+                } catch (error) {
+                    alert('Error updating tag: ' + error.message);
+                }
+            });
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-danger btn-sm';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.addEventListener('click', async () => {
+                if (!confirm(`Delete tag "${tag.name}"?`)) {
+                    return;
+                }
+                try {
+                    await deleteTag(tag.id);
+                    await loadTags();
+                    await loadTransactions();
+                } catch (error) {
+                    alert('Error deleting tag: ' + error.message);
+                }
+            });
+            row.appendChild(nameInput);
+            row.appendChild(colorInput);
+            row.appendChild(saveBtn);
+            row.appendChild(deleteBtn);
+            container.appendChild(row);
+        });
+    }
+
+    async function saveTagEdits(tagId, name, color) {
+        const trimmedName = (name || '').trim();
+        if (!trimmedName) {
+            throw new Error('Tag name is required.');
+        }
+        const response = await fetch(`/tags/api/${tagId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: trimmedName, color })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to update tag');
+        }
+    }
+
+    async function deleteTag(tagId) {
+        const response = await fetch(`/tags/api/${tagId}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to delete tag');
+        }
+    }
+
+    async function createTag() {
+        const nameInput = document.getElementById('new-tag-name');
+        const colorInput = document.getElementById('new-tag-color');
+        const name = nameInput.value.trim();
+        const color = colorInput.value || '#667eea';
+        if (!name) {
+            alert('Tag name is required.');
+            return;
+        }
+        try {
+            const response = await fetch('/tags/api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, color })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                alert('Error creating tag: ' + data.error);
+                return;
+            }
+            nameInput.value = '';
+            await loadTags();
+            await loadTransactions();
+        } catch (error) {
+            alert('Error creating tag: ' + error.message);
+        }
+    }
 </script>
 {% endblock %}
 

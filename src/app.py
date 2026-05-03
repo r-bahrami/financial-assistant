@@ -8,6 +8,7 @@ categorizing, and analyzing bank and credit card transactions.
 import os
 import sys
 from flask import Flask, render_template
+from flask_login import LoginManager
 from datetime import datetime
 
 # Add src directory to Python path
@@ -20,12 +21,32 @@ def create_app():
     app = Flask(__name__)
     
     # Configuration
-    app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['DATABASE'] = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         'data',
         'financial_assistant.db'
     )
+    
+    # Session configuration
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
+    app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+    
+    # Initialize Flask-Login
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'
+    login_manager.login_message = 'Please log in to access this page.'
+    login_manager.login_message_category = 'info'
+    login_manager.session_protection = 'strong'
+    
+    @login_manager.user_loader
+    def load_user(user_id):
+        """Load user for Flask-Login session."""
+        from utils.user_session import UserSession
+        return UserSession.get_by_id(int(user_id), app.config['DATABASE'])
     
     # Custom Jinja filters
     @app.template_filter('format_currency')
@@ -45,6 +66,7 @@ def register_routes(app):
     """Register all application routes."""
     
     # Import blueprints
+    from routes.auth import auth_bp
     from routes.accounts import accounts_bp
     from routes.import_routes import import_bp
     from routes.transactions import transactions_bp
@@ -54,8 +76,11 @@ def register_routes(app):
     from routes.budgets import budgets_bp
     from routes.recurring import recurring_bp
     from routes.dashboard import dashboard_bp
+    from routes.tags import tags_bp
+    from routes.goals import goals_bp
     
-    # Register blueprints
+    # Register blueprints (auth first for login redirects)
+    app.register_blueprint(auth_bp)
     app.register_blueprint(accounts_bp)
     app.register_blueprint(import_bp)
     app.register_blueprint(transactions_bp)
@@ -65,6 +90,8 @@ def register_routes(app):
     app.register_blueprint(budgets_bp)
     app.register_blueprint(recurring_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(tags_bp)
+    app.register_blueprint(goals_bp)
     
     @app.route('/')
     def index():
