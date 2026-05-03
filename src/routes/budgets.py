@@ -107,3 +107,28 @@ def get_budget_summary():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@budgets_bp.route('/api/charts/category')
+def get_budget_category_chart():
+    """Return budget vs actual data by category."""
+    try:
+        period_type = request.args.get('period_type', 'monthly')
+        budget_service = BudgetService(current_app.config['DATABASE'])
+        data = budget_service.get_category_variance(period_type)
+        return jsonify({'success': True, **data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@budgets_bp.route('/api/charts/trend')
+def get_budget_trend_chart():
+    """Return budget performance trend over recent months."""
+    try:
+        period_type = request.args.get('period_type', 'monthly')
+        months = int(request.args.get('months', 6))
+        budget_service = BudgetService(current_app.config['DATABASE'])
+        data = budget_service.get_monthly_performance(months, period_type)
+        return jsonify({'success': True, **data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+

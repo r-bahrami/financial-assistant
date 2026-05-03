@@ -23,15 +23,43 @@ class Goal:
         finally:
             conn.close()
     
-    def create(self, name: str, target_amount: float, target_date: str, category_id: int = None) -> int:
+    def get_by_id(self, goal_id: int) -> Optional[Dict]:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                SELECT g.*, c.name as category_name
+                FROM savings_goals g
+                LEFT JOIN categories c ON g.category_id = c.id
+                WHERE g.id = ?
+            """, (goal_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+    
+    def create(self, name: str, target_amount: float, target_date: Optional[str],
+               category_id: Optional[int] = None, current_amount: float = 0.0,
+               status: str = 'active') -> int:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         try:
             cursor.execute("""
-                INSERT INTO savings_goals (name, target_amount, target_date, category_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (name, target_amount, target_date, category_id, datetime.now(), datetime.now()))
+                INSERT INTO savings_goals (name, target_amount, current_amount, target_date, category_id, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                name,
+                target_amount,
+                current_amount,
+                target_date,
+                category_id,
+                status,
+                datetime.now(),
+                datetime.now()
+            ))
             
             conn.commit()
             return cursor.lastrowid

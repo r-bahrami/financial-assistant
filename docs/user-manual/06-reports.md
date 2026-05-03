@@ -54,11 +54,14 @@ Mar 2025: Income $6,500, Expenses $3,800
 **What it shows:**
 - Percentage of total spending per category
 - Visual breakdown of where money goes
+- **Excludes transfer categories** (Account Transfer, etc.)
 
 **Use cases:**
 - Identify biggest spending categories
 - See budget allocation needs
 - Find savings opportunities
+
+**Note**: Transfer categories are automatically excluded from this chart since they don't represent actual spending.
 
 **Example:**
 ```
@@ -76,11 +79,14 @@ Other: 20% ($600)
 **What it shows:**
 - Month-by-month spending per category
 - Stacked bars show category contribution
+- **Excludes transfer categories** (Account Transfer, etc.)
 
 **Use cases:**
 - See seasonal patterns (heating in winter, AC in summer)
 - Track category spending over time
 - Identify irregular months
+
+**Note**: Transfer categories are automatically excluded since they don't represent actual spending.
 
 **Example:**
 ```
@@ -104,11 +110,14 @@ November:
 **What it shows:**
 - Highest spending categories
 - Sorted by amount (largest first)
+- **Excludes transfer categories** (Account Transfer, etc.)
 
 **Use cases:**
 - Quick overview of biggest expenses
 - Budget priority identification
 - Savings opportunity analysis
+
+**Note**: Transfer categories are automatically excluded since they don't represent actual spending.
 
 **Example:**
 ```
@@ -333,17 +342,23 @@ Sep: $3,500 ← SPIKE!
 - Entertainment, subscriptions
 
 **EXCLUDED from charts:**
-- **Transfers** (between accounts)
+- **Transfer categories** (Account Transfer, etc.) - automatically excluded from all spending reports
 - **Uncategorized transactions** (in some charts)
 
-### Why Transfers Are Excluded
+### Why Transfer Categories Are Excluded
 
-Transfers don't change your net worth:
+Transfer categories don't represent actual spending:
 - Paying credit card from checking = $0 net change
 - Moving savings to checking = $0 net change
 - Internal movements ≠ income or expenses
 
-**Charts show TRUE income/expenses** without transfer noise.
+**All spending reports automatically exclude transfer categories** to show TRUE income/expenses without transfer noise. This includes:
+- Top spending categories (dashboard and reports)
+- Category breakdown charts
+- Monthly category trends
+- Spending by category pie charts
+
+Transfer transactions are still visible in the transaction list and tracked separately in the transfers statistic.
 
 ---
 

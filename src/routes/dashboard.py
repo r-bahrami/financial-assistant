@@ -7,6 +7,33 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
+
+def calculate_health_score(savings_rate: float, total_balance: float, total_budgets: int, net_income: float) -> int:
+    """Calculate the dashboard health score based on key financial metrics."""
+    score = 0
+
+    if savings_rate > 20:
+        score += 40
+    elif savings_rate > 10:
+        score += 30
+    elif savings_rate > 0:
+        score += 20
+
+    if total_balance > 5000:
+        score += 30
+    elif total_balance > 1000:
+        score += 20
+    elif total_balance > 0:
+        score += 10
+
+    if total_budgets > 0:
+        score += 20
+
+    if net_income > 0:
+        score += 10
+
+    return min(100, score)
+
 @dashboard_bp.route('/')
 def dashboard_page():
     return render_template('dashboard.html', app_name='Financial Assistant')
@@ -40,12 +67,12 @@ def get_financial_health():
         cursor.execute("SELECT COUNT(*) as total FROM budgets")
         total_budgets = cursor.fetchone()['total']
         
-        # Top categories (last 30 days)
+        # Top categories (last 30 days) - exclude transfers
         cursor.execute("""
             SELECT c.name, SUM(ABS(t.amount)) as total
             FROM transactions t
             JOIN categories c ON t.category_id = c.id
-            WHERE t.date >= ? AND t.amount < 0
+            WHERE t.date >= ? AND t.amount < 0 AND c.type != 'transfer'
             GROUP BY c.name
             ORDER BY total DESC
             LIMIT 5
@@ -60,17 +87,7 @@ def get_financial_health():
         conn.close()
         
         # Calculate health score (0-100)
-        health_score = 0
-        if savings_rate > 20: health_score += 40
-        elif savings_rate > 10: health_score += 30
-        elif savings_rate > 0: health_score += 20
-        
-        if total_balance > 5000: health_score += 30
-        elif total_balance > 1000: health_score += 20
-        elif total_balance > 0: health_score += 10
-        
-        if total_budgets > 0: health_score += 20
-        if net_income > 0: health_score += 10
+        health_score = calculate_health_score(savings_rate, total_balance, total_budgets, net_income)
         
         return jsonify({
             'success': True,

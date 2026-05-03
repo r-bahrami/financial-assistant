@@ -325,9 +325,10 @@ let currentTransaction = null;
 let selectedCategoryPath = [];
 let selectedCategoryId = null;
 let allCategoriesForPicker = [];
+let bulkCategoryTransactionIds = [];
 
-function openCategoryPicker(transactionId, buttonElement) {
-    currentTransaction = transactionId;
+function openCategoryPicker(transactionId = null, buttonElement = null) {
+    currentTransaction = transactionId || null;
     selectedCategoryPath = [];
     selectedCategoryId = null;
     
@@ -408,6 +409,7 @@ function closeCategoryPicker() {
     currentTransaction = null;
     selectedCategoryPath = [];
     selectedCategoryId = null;
+    bulkCategoryTransactionIds = [];
 }
 
 async function loadCategoriesForPicker() {
@@ -631,11 +633,25 @@ async function assignSelectedCategory() {
     btn.textContent = 'Saving...';
     
     try {
-        // Check if learning is enabled
         const learn = document.getElementById('learn-checkbox').checked;
-        
-        // Update the transaction with learning option
-        await updateTransactionCategory(currentTransaction, selectedCategoryId, learn);
+        const targetIds = bulkCategoryTransactionIds.length
+            ? bulkCategoryTransactionIds
+            : (currentTransaction ? [currentTransaction] : []);
+
+        if (!targetIds.length) {
+            alert('No transactions selected.');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            return;
+        }
+
+        if (targetIds.length === 1) {
+            await updateTransactionCategory(targetIds[0], selectedCategoryId, learn);
+        } else if (typeof bulkCategorizeTransactions === 'function') {
+            await bulkCategorizeTransactions(targetIds, selectedCategoryId, learn);
+        } else {
+            throw new Error('Bulk categorize helper not available.');
+        }
         
         // Close picker after successful update
         closeCategoryPicker();
@@ -648,11 +664,26 @@ async function assignSelectedCategory() {
 }
 
 async function selectUncategorized() {
-    if (!confirm('Remove category from this transaction?')) {
+    if (!confirm('Remove category from the selected transaction(s)?')) {
         return;
     }
     
-    await updateTransactionCategory(currentTransaction, null);
+    const targetIds = bulkCategoryTransactionIds.length
+        ? bulkCategoryTransactionIds
+        : (currentTransaction ? [currentTransaction] : []);
+
+    if (!targetIds.length) {
+        alert('No transactions selected.');
+        return;
+    }
+
+    if (targetIds.length === 1) {
+        await updateTransactionCategory(targetIds[0], null);
+    } else if (typeof bulkCategorizeTransactions === 'function') {
+        await bulkCategorizeTransactions(targetIds, null, false);
+    } else {
+        throw new Error('Bulk categorize helper not available.');
+    }
     closeCategoryPicker();
 }
 
@@ -744,5 +775,11 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+function openCategoryPickerForBulk(transactionIds) {
+    bulkCategoryTransactionIds = transactionIds.slice();
+    currentTransaction = null;
+    openCategoryPicker(null);
+}
 </script>
 

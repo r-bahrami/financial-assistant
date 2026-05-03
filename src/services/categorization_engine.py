@@ -123,6 +123,58 @@ class CategorizationEngine:
             conn.close()
             raise ValueError(f"Rule with pattern '{pattern}' already exists")
     
+    def update_rule(self, rule_id: int, pattern: Optional[str] = None,
+                    category_id: Optional[int] = None, priority: Optional[int] = None) -> bool:
+        """
+        Update a categorization rule.
+        
+        Args:
+            rule_id: Rule ID
+            pattern: Optional new pattern
+            category_id: Optional new category ID
+            priority: Optional new priority
+        
+        Returns:
+            True if updated, False if not found
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Build update query
+        updates = []
+        params = []
+        
+        if pattern is not None:
+            updates.append("pattern = ?")
+            params.append(pattern.upper().strip())
+        
+        if category_id is not None:
+            updates.append("category_id = ?")
+            params.append(category_id)
+        
+        if priority is not None:
+            updates.append("priority = ?")
+            params.append(priority)
+        
+        if not updates:
+            conn.close()
+            return True  # Nothing to update
+        
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(rule_id)
+        
+        query = f"UPDATE categorization_rules SET {', '.join(updates)} WHERE id = ?"
+        
+        try:
+            cursor.execute(query, params)
+            updated = cursor.rowcount > 0
+            conn.commit()
+            conn.close()
+            return updated
+        except sqlite3.IntegrityError:
+            conn.close()
+            raise ValueError(f"Rule with pattern '{pattern}' already exists")
+    
     def update_rule_match_count(self, rule_id: int):
         """
         Increment the match count for a rule.

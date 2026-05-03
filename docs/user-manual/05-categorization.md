@@ -253,7 +253,14 @@ Visit **/categories/manage** for full category and rule management.
 **Add New Rule:**
 1. Enter pattern (e.g., "TRADER JOE")
 2. Select category
-3. Click "Add Rule"
+3. Set priority (higher = more important)
+4. Click "Create Rule"
+
+**Edit Existing Rule:**
+1. Click "Edit" button next to any rule
+2. Modify pattern, category, or priority
+3. Click "Update Rule"
+4. Changes apply to future transactions
 
 **How patterns work:**
 - Case-insensitive
